@@ -1,5 +1,8 @@
+package src;
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -9,11 +12,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Parser {
-	static Map<String, Pattern> patterns;
-	static ArrayList< Map<String, VarContent> > vars;
+	static HashMap<String, Pattern> patterns;
+	static HashMap<String, String> vars;
 	
 	public static void main(String[] args) {
-		patterns = new HashSet<Pattern>();
+		patterns = new HashMap<String, Pattern>();
 		vars = new HashMap<String, String>();
 		setUpPatterns();
 		try {
@@ -32,14 +35,23 @@ public class Parser {
 	
 	private static void defineVar(String line){
 		String[] strArray = line.split(" ");
-		for (Map<String, VarContent) x : vars){
-			if (x.get(strArray[1]) != null){
+		/*
+		for (String x : vars.keySet()) {
+			if (vars.get(strArray[1]) != null){
 				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
 									"defined, cannot define it again!");
-				e.printStackTrace();
-				System.exit();
+				//e.printStackTrace();
+				System.exit(1);
 			}
 		}
+		*/
+		if (vars.get(strArray[0]) != null) {
+				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
+									"defined, cannot define it again!");
+				//e.printStackTrace();
+				System.exit(1);
+		}
+
 		Matcher m = patterns.get("bool_expr").matcher(strArray[3]);
 		if (m.matches()){
 			vars.get(vars.size() - 1).add(strArray[1], new VarContent(boolEval(strArray[3]));
@@ -56,6 +68,7 @@ public class Parser {
 						new VarContent(strArray[3].substring(0, strArray.length()-1));
 			return;
 		}
+
 		// Checking if we're defining var in terms of another var
 		for (Map<String, VarContent) x : vars){
 			if (x.get(strArray[3]) != null){
@@ -136,15 +149,27 @@ public class Parser {
 	}
 
 	private static int intEval(String expr){
-		if (expr.isdigit()) return Integer.valueOf(expr);
-		if (expr.lstrip('-').isdigit()) return 0 - Integer.valueOf(expr);
+		if (isInt(expr)) return Integer.parseInt(expr);
 		// TODO: add recursive expression evaluating;
+	}
+	
+	private static boolean isInt(String expr) {
+		if (expr == null)
+			return false;
+		try {
+			int x = Integer.parseInt(expr);
+		} catch (NumberFormatException e) {
+			return false;
+		}
+		return true;
 	}
 
 	// Pass in a boolean or boolean expression
 	private static boolean boolEval(String expr){
 		if (expr.equals("true")) return true;
 		if (expr.equals("false")) return false;
+		else
+			return false; // had to add this in so it wouldn't keep erroring
 		// TODO: add recursive expression evaluating
 	}
 
@@ -155,7 +180,7 @@ public class Parser {
 		String digit = "\\d";
 		String bool = "true|false";
 		Pattern integer = Pattern.compile(digit + "+");
-		patterns.add(integer);
+		patterns.put("int", integer);
 		
 		String commandLineArg = "$arg[" + integer + "]";
 		
@@ -164,7 +189,7 @@ public class Parser {
 		String value = "(" + integer + "|" + bool + "|" + commandLineArg + "|" + variable + ")";
 		
 		Pattern var_assgn = Pattern.compile("var " + variable + " = " + value);
-		patterns.add(var_assgn);
+		patterns.put("var_assgn", var_assgn);
 		
 		// Need to make i_expr code without breaking java
 		Pattern expr_root = Pattern.compile("(" + variable + "|" + integer + ")");
@@ -178,22 +203,23 @@ public class Parser {
 
 		String print_matter = ""; // fill this out
 		Pattern print = Pattern.compile("print(" + print_matter + ")");
-		patterns.add(print);
+		patterns.put("print", print);
 		
 		// In the end we need to add all the patterns into the patterns collection
 	}
 	
-	private static Pattern IDPattern(String line) {
+	private static String IDPattern(String line) {
 		 // This is where we iterate through the patterns and find a match
-		for (Pattern curr : patterns) {
-			Matcher m = curr.matcher(line);
+		for (String patternName : patterns.keySet()) {
+			Pattern tempPatter = patterns.get(patternName);
+			Matcher m = tempPatter.matcher(line);
 			if (m.matches())
-				return curr;
+				return patternName;
 		}
 		return null;
 	}
 
-	private static void translate(String line, Pattern idPattern) {
+	private static void translate(String line, String string) {
 		// Want to output the correct translation to Java
 		
 		// output translation to file
@@ -205,7 +231,7 @@ public class Parser {
 		int integerVal;
 		boolean boolVal;
 		String stringVal;
-		public VarNode(int val){
+		public VarContent(int val){
 			type = 0;
 			integerVal = val;
 		}
