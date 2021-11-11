@@ -13,11 +13,11 @@ import java.util.regex.Pattern;
 
 public class Parser {
 	static HashMap<String, Pattern> patterns;
-	static HashMap<String, String> vars;
+	static ArrayList< HashMap<String, VarContent> > vars;
 	
 	public static void main(String[] args) {
 		patterns = new HashMap<String, Pattern>();
-		vars = new HashMap<String, String>();
+		vars = new ArrayList< HashMap<String, VarContent> >();
 		setUpPatterns();
 		try {
 			File file = new File(args[0]);
@@ -40,45 +40,45 @@ public class Parser {
 			if (vars.get(strArray[1]) != null){
 				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
 									"defined, cannot define it again!");
-				//e.printStackTrace();
 				System.exit(1);
 			}
 		}
 		*/
-		if (vars.get(strArray[0]) != null) {
+		if (vars.get(vars.size()-1).get(strArray[0]) != null) {
 				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
 									"defined, cannot define it again!");
-				//e.printStackTrace();
 				System.exit(1);
 		}
 
 		Matcher m = patterns.get("bool_expr").matcher(strArray[3]);
 		if (m.matches()){
-			vars.get(vars.size() - 1).add(strArray[1], new VarContent(boolEval(strArray[3]));
+			vars.get(vars.size() - 1).put(strArray[1], new VarContent(boolEval(strArray[3])));
 			return;
 		}
+		
 		m = patterns.get("i_expr").matcher(strArray[3]);
 		if (m.matches()){
-			vars.get(vars.size() - 1).add(strArray[1], new VarContent(intEval(strArray[3]));
+			vars.get(vars.size() - 1).put(strArray[1], new VarContent(intEval(strArray[3])));
 			return;
 		}
+		
 		m = patterns.get("string").matcher(strArray[3]);
 		if (m.matches()){
-			vars.get(vars.size() - 1).add(strArray[1],
-						new VarContent(strArray[3].substring(0, strArray.length()-1));
+			vars.get(vars.size() - 1).put(strArray[1],
+						new VarContent(strArray[3].substring(0, strArray.length -1)));
 			return;
 		}
 
 		// Checking if we're defining var in terms of another var
-		for (Map<String, VarContent) x : vars){
+		for (HashMap<String, VarContent> x : vars){
 			if (x.get(strArray[3]) != null){
 				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
 				VarContent original = x.get(strArray[3]);
-				if (original.type == 0) vars.get(vars.size() - 1).add(strArray[1],
+				if (original.type == 0) vars.get(vars.size() - 1).put(strArray[1],
 													new VarContent(original.integerVal));
-				else if (original.type == 1) vars.get(vars.size() - 1).add(strArray[1],
+				else if (original.type == 1) vars.get(vars.size() - 1).put(strArray[1],
 														new VarContent(original.boolVal));
-				else vars.get(vars.size() - 1).add(strArray[1], new VarContent(original.stringVal));
+				else vars.get(vars.size() - 1).put(strArray[1], new VarContent(original.stringVal));
 				return;
 			}
 		}
@@ -92,44 +92,44 @@ public class Parser {
 		if (content == null){
 			System.out.println("SYNTAX ERROR: Var " + strArray[0] + " has not been" +
 									"defined, cannot set it!");
-			e.printStackTrace();
-			System.exit();
+			System.exit(1);
 		}
-		Matcher m = patterns.get("bool_expr").matcher(strArray[2]);
+		
+		Matcher m = patterns.get("bool_expr").matcher(strArray[2]);    // If boolean expression variable
 		if (m.matches()){
 			if (content.type != 1){
 				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
 									"type boolean, so it cannot be set to a boolean!");
-				e.printStackTrace();
-				System.exit();
+				System.exit(1);
 			}
 			content.boolVal = boolEval(strArray[2]);
 			return;
 		}
-		m = patterns.get("i_expr").matcher(strArray[2]);
+		
+		m = patterns.get("i_expr").matcher(strArray[2]);    // If integer expression variable
 		if (m.matches()){
 			if (content.type != 0){
 				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" +
 									"type int, so it cannot be set to an int!");
-				e.printStackTrace();
-				System.exit();
+				System.exit(1);
 			}
 			content.integerVal = intEval(strArray[2]);
 			return;
 		}
-		m = patterns.get("string").matcher(strArray[2]);
+		
+		m = patterns.get("string").matcher(strArray[2]);    // If string format variable
 		if (m.matches()){
 			if (content.type != 0){
 				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " +
 									"type string, so it cannot be set to a string!");
-				e.printStackTrace();
-				System.exit();
+				System.exit(1);
 			}
-			content.integerVal = strArray[3].substring(0, strArray.length()-1);
+			content.integerVal = Integer.valueOf(strArray[3].substring(0, strArray.length -1));
 			return;
 		}
+		
 		// Checking if we're defining var in terms of another var
-		for (Map<String, VarContent) x : vars){
+		for (HashMap<String, VarContent> x : vars){
 			if (x.get(strArray[2]) != null){
 				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
 				VarContent original = x.get(strArray[2]);
@@ -140,11 +140,12 @@ public class Parser {
 					return;
 				}
 				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of the " +
-									"sametype as var " + strArray[2]);
-				e.printStackTrace();
-				System.exit();
+									"same type as var " + strArray[2]);
+				System.exit(1);
 			}
 		}
+		System.out.println("SYNTAX ERROR: Invalid variable declaration.");
+		System.exit(1);
 		// TODO: ERROR OUT
 	}
 
