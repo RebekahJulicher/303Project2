@@ -176,8 +176,12 @@ public class Parser {
 	}
 
 	private static void setUpPatterns() {
-		String comment = "$+[\\d*[\\w&&[^\\d]]*]*";
-		String string = '"' + "[\\d*[\\w&&[^\\d]]*]*" + '"';
+		//String comment = "$+[\\d*[\\w&&[^\\d]]*]*";
+		String comment = "$.*";
+		//String string = "\"[\\d*[\\w&&[^\\d]]*]*\"";
+		String string = "\".*\"";
+		
+		String character = "'.'";
 
 		String digit = "\\d";
 		String bool = "true|false";
@@ -194,13 +198,17 @@ public class Parser {
 		patterns.put("var_assgn", var_assgn);
 		
 		// Need to make i_expr code without breaking java
-		Pattern expr_root = Pattern.compile("(" + variable + "|" + integer + ")");
-		Pattern un_expr = Pattern.compile("(~" + expr_root + "|" + expr_root + ")");
-		Pattern assoc_expr = Pattern.compile("(" + un_expr + "|"); // Need to build on this somehow
+		Pattern commu_op = Pattern.compile("[+-]");
 		Pattern assoc_op = Pattern.compile("[*/%]");
-		// have a bit more left to go
-
+		String expr_root_string = "(" + variable + "|" + integer + ")";
+		Pattern un_expr = Pattern.compile("(~" + expr_root_string + "|" + expr_root_string + ")");
+		Pattern assoc_expr = Pattern.compile(un_expr + "(" + assoc_op + un_expr + ")*");
+		Pattern i_expr = Pattern.compile(assoc_expr + "(" + commu_op + assoc_expr + ")*");
 		
+		expr_root_string = "(" + variable + "|" + integer + "|" + i_expr + ")";
+		Pattern expr_root = Pattern.compile(expr_root_string);
+		// expr_root string outdated
+
 		// Need to make bool_expr code without breaking java
 
 		String print_matter = ""; // fill this out
