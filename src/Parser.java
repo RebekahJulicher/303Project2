@@ -13,11 +13,11 @@ import java.util.regex.Pattern;
 
 public class Parser {
 	static HashMap<String, Pattern> patterns;
-	static ArrayList< HashMap<String, VarContent> > vars;
+	static ArrayList< HashMap<String, Integer> > vars;
 	
 	public static void main(String[] args) {
 		patterns = new HashMap<String, Pattern>();
-		vars = new ArrayList< HashMap<String, VarContent> >();
+		vars = new ArrayList< HashMap<String, Integer> >();
 		setUpPatterns();
 		try {
 			File file = new File(args[0]);
@@ -35,40 +35,32 @@ public class Parser {
 	
 	private static void defineVar(String line){
 		String[] strArray = line.split(" ");
+		
+		if (vars.get(vars.size()-1).get(strArray[1]) != null) {
+				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
+									"defined, cannot define it again!");
+				System.exit(1);
+		}
+		
+		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
+			line.contains(">") || line.contains("<") || line.contains(" and ") ||
+			line.contains(" not ") || line.contains(" or ")){
+			// HANDLE VARS/COMMAND LINE ARGS
+			vars.get(vars.size() - 1).put(strArray[1], 1);
+			// TODO: Write appropriate thing to file
+			return;
+		}
+		
+		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
+				line.contains("%") || line.contains("-") || isInt(strArray[3])){
+			// HANDLE VARS/COMMAND LINE ARGS
+			vars.get(vars.size() - 1).put(strArray[1], 0);
+			// TODO: Write appropriate thing to file
+			return;
+		}
+		
+		//HANDLE VARS AND COMMAND LINE ARGS
 		/*
-		for (String x : vars.keySet()) {
-			if (vars.get(strArray[1]) != null){
-				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
-									"defined, cannot define it again!");
-				System.exit(1);
-			}
-		}
-		*/
-		if (vars.get(vars.size()-1).get(strArray[0]) != null) {
-				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
-									"defined, cannot define it again!");
-				System.exit(1);
-		}
-
-		Matcher m = patterns.get("bool_expr").matcher(strArray[3]);
-		if (m.matches()){
-			vars.get(vars.size() - 1).put(strArray[1], new VarContent(boolEval(strArray[3])));
-			return;
-		}
-		
-		m = patterns.get("i_expr").matcher(strArray[3]);
-		if (m.matches()){
-			vars.get(vars.size() - 1).put(strArray[1], new VarContent(intEval(strArray[3])));
-			return;
-		}
-		
-		m = patterns.get("string").matcher(strArray[3]);
-		if (m.matches()){
-			vars.get(vars.size() - 1).put(strArray[1],
-						new VarContent(strArray[3].substring(0, strArray.length -1)));
-			return;
-		}
-
 		// Checking if we're defining var in terms of another var
 		for (HashMap<String, VarContent> x : vars){
 			if (x.get(strArray[3]) != null){
@@ -76,58 +68,52 @@ public class Parser {
 				VarContent original = x.get(strArray[3]);
 				if (original.type == 0) vars.get(vars.size() - 1).put(strArray[1],
 													new VarContent(original.integerVal));
-				else if (original.type == 1) vars.get(vars.size() - 1).put(strArray[1],
+				else vars.get(vars.size() - 1).put(strArray[1],
 														new VarContent(original.boolVal));
-				else vars.get(vars.size() - 1).put(strArray[1], new VarContent(original.stringVal));
 				return;
 			}
 		}
 		// TODO: ERROR OUT
+		 
+		 */
 	}
+
 
 	private static void setVar(String line){
 		String[] strArray = line.split(" ");
-		VarContent content = vars.get(vars.size()-1).get(strArray[0]);
+		Integer type = vars.get(vars.size()-1).get(strArray[1]);
 		
-		if (content == null){
+		if (type == null){
 			System.out.println("SYNTAX ERROR: Var " + strArray[0] + " has not been" +
 									"defined, cannot set it!");
 			System.exit(1);
 		}
 		
-		Matcher m = patterns.get("bool_expr").matcher(strArray[2]);    // If boolean expression variable
-		if (m.matches()){
-			if (content.type != 1){
+		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
+			line.contains(">") || line.contains("<") || line.contains(" and ") ||
+			line.contains(" not ") || line.contains(" or ")){
+			if (type != 1){
 				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
 									"type boolean, so it cannot be set to a boolean!");
 				System.exit(1);
 			}
-			content.boolVal = boolEval(strArray[2]);
+			// TODO: Write appropriate thing to file
 			return;
 		}
 		
-		m = patterns.get("i_expr").matcher(strArray[2]);    // If integer expression variable
-		if (m.matches()){
-			if (content.type != 0){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" +
+		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
+				line.contains("%") || line.contains("-") || isInt(strArray[3])){
+			if (type != 0){
+				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
 									"type int, so it cannot be set to an int!");
 				System.exit(1);
 			}
-			content.integerVal = intEval(strArray[2]);
+			// TODO: Write appropriate thing to file
 			return;
 		}
 		
-		m = patterns.get("string").matcher(strArray[2]);    // If string format variable
-		if (m.matches()){
-			if (content.type != 0){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " +
-									"type string, so it cannot be set to a string!");
-				System.exit(1);
-			}
-			content.integerVal = Integer.valueOf(strArray[3].substring(0, strArray.length -1));
-			return;
-		}
-		
+		// TODO: Handle variables
+		/*
 		// Checking if we're defining var in terms of another var
 		for (HashMap<String, VarContent> x : vars){
 			if (x.get(strArray[2]) != null){
@@ -135,8 +121,7 @@ public class Parser {
 				VarContent original = x.get(strArray[2]);
 				if (original.type == content.type){
 					if (original.type == 0) content.integerVal = original.integerVal;
-					else if (original.type == 1) content.boolVal = original.boolVal;
-					else content.stringVal = original.stringVal;
+					else content.boolVal = original.boolVal;
 					return;
 				}
 				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of the " +
@@ -147,12 +132,7 @@ public class Parser {
 		System.out.println("SYNTAX ERROR: Invalid variable declaration.");
 		System.exit(1);
 		// TODO: ERROR OUT
-	}
-
-	private static int intEval(String expr){
-		if (isInt(expr)) return Integer.parseInt(expr);
-		return 0;
-		// TODO: add recursive expression evaluating;
+		 */
 	}
 	
 	private static boolean isInt(String expr) {
@@ -166,14 +146,6 @@ public class Parser {
 		return true;
 	}
 
-	// Pass in a boolean or boolean expression
-	private static boolean boolEval(String expr){
-		if (expr.equals("true")) return true;
-		if (expr.equals("false")) return false;
-		else
-			return false; // had to add this in so it wouldn't keep erroring
-		// TODO: add recursive expression evaluating
-	}
 
 	private static void setUpPatterns() {
 		//String comment = "$+[\\d*[\\w&&[^\\d]]*]*";
@@ -235,26 +207,14 @@ public class Parser {
 		// output translation to file
 	}
 
+	//THIS IS NOT NECESSARY, WE COULD MAP THIS TO AN INT ABOVE
 	static class VarContent {
-		// 0 for int, 1 for boolean, 2 for string
+		// 0 for int, 1 for boolean
 		int type;
-		int integerVal;
-		boolean boolVal;
-		String stringVal;
-		public VarContent(int val){
-			type = 0;
-			integerVal = val;
+		public VarContent(int type){
+			this.type = type;
 		}
 
-		public VarContent(boolean val){
-			type = 1;
-			boolVal = val;
-		}
-
-		public VarContent(String val){
-			type = 2;
-			stringVal = val;
-		}
 	}
 
 }
