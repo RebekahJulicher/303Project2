@@ -87,7 +87,7 @@ public class Parser {
 
 	private static void setVar(String line){
 		String[] strArray = line.split(" ");
-		VarContent content = vars.get(vars.size()-1).get(strArray[0])''
+		VarContent content = vars.get(vars.size()-1).get(strArray[0]);
 		
 		if (content == null){
 			System.out.println("SYNTAX ERROR: Var " + strArray[0] + " has not been" +
@@ -150,6 +150,7 @@ public class Parser {
 
 	private static int intEval(String expr){
 		if (isInt(expr)) return Integer.parseInt(expr);
+		return 0;
 		// TODO: add recursive expression evaluating;
 	}
 	
@@ -236,12 +237,12 @@ public class Parser {
 			integerVal = val;
 		}
 
-		public VarNode(boolean val){
+		public VarContent(boolean val){
 			type = 1;
 			boolVal = val;
 		}
 
-		public VarNode(String val){
+		public VarContent(String val){
 			type = 2;
 			stringVal = val;
 		}
