@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 public class Parser {
 	static HashMap<String, Pattern> patterns;
 	static ArrayList< HashMap<String, Integer> > vars;
+	static int indentationLevel = 0;
 	
 	public static void main(String[] args) {
 		patterns = new HashMap<String, Pattern>();
@@ -22,9 +23,28 @@ public class Parser {
 		try {
 			File file = new File(args[0]);
 			Scanner in = new Scanner(file);
+			boolean commentBlock = false;
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
-				translate(line, IDPattern(line));
+				if (Pattern.matches("\\S+#.*", line)) // remove trailing comment from line
+					line = line.split("#", 2)[0];
+
+				boolean ignore = false;
+				if (commentBlock)
+					ignore = true;
+				if (line.charAt(0) == '$')
+					commentBlock = !commentBlock;
+				if (line.charAt(0) == '#' && !commentBlock)
+					ignore = true;
+
+				if (!ignore)
+					translate(line, IDPattern(line));
+				
+				if (indentationLevel < 0) 
+					System.out.println("SYNTAX ERROR: More \"end\" statements than \"start\" statements in code.");
+				if (indentationLevel > 0) 
+					System.out.println("SYNTAX ERROR: More \"start\" statements than \"end\" statements in code.");
+
 			}
 			in.close();
 		} catch (FileNotFoundException e) {
@@ -145,6 +165,27 @@ public class Parser {
 		}
 		return true;
 	}
+	
+	private static boolean isIf(String expr) {
+		String words[] = expr.split(expr);
+		if (words[0].equals("if"))
+			return true;
+		return false;
+	}
+
+	private static boolean isElseIf(String expr) {
+		String words[] = expr.split(expr);
+		if ((words[0] + words[1]).equals("elseif"))
+			return true;
+		return false;
+	}
+	
+	private static boolean isElse(String expr) {
+		String words[] = expr.split(expr);
+		if (words[0].equals("else"))
+			return true;
+		return false;
+	}
 
 
 	private static void setUpPatterns() {
@@ -191,6 +232,12 @@ public class Parser {
 	}
 	
 	private static String IDPattern(String line) {
+		if (isIf(line))
+			return "if";
+		if (isElseIf(line))
+			return "else_if";
+		if (isElse(line))
+			return "else";
 		 // This is where we iterate through the patterns and find a match
 		for (String patternName : patterns.keySet()) {
 			Pattern tempPatter = patterns.get(patternName);
@@ -203,9 +250,12 @@ public class Parser {
 
 	private static void translate(String line, String string) {
 		// Want to output the correct translation to Java
+
 		
 		// output translation to file
 	}
+	
+	
 
 	//THIS IS NOT NECESSARY, WE COULD MAP THIS TO AN INT ABOVE
 	static class VarContent {
