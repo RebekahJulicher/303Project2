@@ -53,15 +53,17 @@ public class Parser {
 		}
 	}
 	
-	private static void defineVar(String line){
+	private static void defineVar(String line, String[] args){
 		String[] strArray = line.split(" ");
-		
-		if (vars.get(vars.size()-1).get(strArray[1]) != null) {
+		String content = "";
+		for (int i = 3; i < strArray.length; i++) content += strArray[i];
+		if (vars.get(vars.size()-1).get(strArray[1]) != null) {  // If name already exists, error
 				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
 									"defined, cannot define it again!");
 				System.exit(1);
 		}
 		
+		// Checking for boolean expression
 		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
 			line.contains(">") || line.contains("<") || line.contains(" and ") ||
 			line.contains(" not ") || line.contains(" or ")){
@@ -71,33 +73,145 @@ public class Parser {
 			return;
 		}
 		
+		// Checking for int expression
 		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
 				line.contains("%") || line.contains("-") || isInt(strArray[3])){
-			// HANDLE VARS/COMMAND LINE ARGS
+			
+			if (!checkIntExpr(content, args)) System.exit(1);
 			vars.get(vars.size() - 1).put(strArray[1], 0);
 			// TODO: Write appropriate thing to file
 			return;
 		}
 		
 		//HANDLE VARS AND COMMAND LINE ARGS
-		/*
+		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
+			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+				System.out.println("SYNTAX ERROR: Invalid arg index");
+				System.exit(1);
+			}
+			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
+				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 0);
+			}
+			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
+						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
+				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 1);
+			}
+			else {
+				System.out.println("SYNTAX ERROR: Command line argument input is not int or boolean");
+				System.exit(1);
+			}
+			// TODO: Write appropriate thing to file
+			return;
+		}
+		
 		// Checking if we're defining var in terms of another var
-		for (HashMap<String, VarContent> x : vars){
-			if (x.get(strArray[3]) != null){
+		for (HashMap<String, Integer> x : vars){
+			if (x.get(strArray[1]) != null){
 				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
-				VarContent original = x.get(strArray[3]);
-				if (original.type == 0) vars.get(vars.size() - 1).put(strArray[1],
-													new VarContent(original.integerVal));
-				else vars.get(vars.size() - 1).put(strArray[1],
-														new VarContent(original.boolVal));
+				Integer original = x.get(strArray[3]);
+				vars.get(vars.size() - 1).put(strArray[1], original);
+				// TODO: Write appropriate thing to file
 				return;
 			}
 		}
-		// TODO: ERROR OUT
-		 
-		 */
+		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
+		System.exit(1);
 	}
-
+	
+	
+	private static boolean isOp(char item) {
+		return item == '+' || item == '-' || item == '*' || item == '/' || item == '%';
+	}
+	
+	
+	// TODO: THIS CURRENTLY DOES NOT ACCOUNT FOR EXTRA SPACES BETWEEN OPS AND PARENTHESES
+	private static boolean checkIntExpr(String line, String[] args) {
+		int numOpenPar = 0;
+		int numClosedPar = 0;
+		boolean precededByVal = false;
+		String soFar = "";
+		// Checking for equal parentheses and removing them from the issue
+		for (int i = 0; i < line.length(); i++) {
+			char c = line.charAt(i);
+			if (c == '(') {
+				if (i < line.length()-1 && isOp(line.charAt(i+1))){
+					System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
+					return false;
+				}
+				numOpenPar++;
+			}
+			else if (c == ')') {
+				if (i > 0 && isOp(line.charAt(i-1))){
+					System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
+					return false;
+				}
+				numClosedPar++;
+				if (numClosedPar > numOpenPar) {
+					System.out.println("SYNTAX ERROR: Unmatched parentheses");
+					return false;
+				}
+			}
+			else soFar += c;
+		}
+		if (numOpenPar != numClosedPar) {
+			System.out.println("SYNTAX ERROR: Unmatched parentheses");
+			return false;
+		}
+		
+		// Handling value/operator pairing checking
+		String[] strArray = soFar.split(" ");
+		for (int i = 0; i < strArray.length; i++) {
+			// If curr string is operator
+			if (isOp(strArray[i].charAt(0))) {
+				if (!precededByVal) {
+					System.out.println("SYNTAX ERROR: Operator not preceded by value");
+					return false;
+				}
+				precededByVal = false;
+			}
+			// If curr string is number
+			else if (patterns.get("number").matcher(strArray[i]).matches()) {
+				if (precededByVal) {
+					System.out.println("SYNTAX ERROR: Value not preceded by operator");
+					return false;
+				}
+				precededByVal = true;
+			}
+			// If curr string is command line argument
+			else if (patterns.get("commandLineArg").matcher(strArray[i]).matches()) {
+				if (args.length <= Integer.valueOf(strArray[i].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+					System.out.println("SYNTAX ERROR: Invalid arg index");
+					return false;
+				}
+				if (patterns.get("number").matcher(args[Integer.valueOf(strArray[i].charAt(5))]).matches()) {
+					if (precededByVal) {
+						System.out.println("SYNTAX ERROR: Value not preceded by operator");
+						return false;
+					}
+					precededByVal = true;
+				}
+			}
+			// Else if curr string can only otherwise be a variable name
+			else {
+				if (patterns.get("number").matcher(strArray[i]).matches()) {
+					if (precededByVal) {
+						System.out.println("SYNTAX ERROR: Value not preceded by operator");
+						return false;
+					}
+					precededByVal = true;
+				}
+				for (HashMap<String, Integer> x : vars){
+					if (x.get(strArray[i]) != null && !precededByVal) precededByVal = true;
+					else {
+						System.out.println("SYNTAX ERROR: Integer expression contains nonexistent variable");
+						return false;
+					}
+				}
+			}
+		}
+		if (!precededByVal) System.out.println("SYNTAX ERROR: Integer expression does not end with val");
+		return precededByVal;
+	}
 
 	private static void setVar(String line){
 		String[] strArray = line.split(" ");
@@ -189,6 +303,8 @@ public class Parser {
 
 
 	private static void setUpPatterns() {
+		Pattern number = Pattern.compile("-?\\d+(\\.\\d+)?");
+		patterns.put("number", number);
 		//String comment = "$+[\\d*[\\w&&[^\\d]]*]*";
 		String comment = "$.*";
 		//String string = "\"[\\d*[\\w&&[^\\d]]*]*\"";
