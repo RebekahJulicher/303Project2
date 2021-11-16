@@ -2,12 +2,11 @@ package src;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Scanner;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,11 +14,26 @@ public class Parser {
 	static HashMap<String, Pattern> patterns;
 	static ArrayList< HashMap<String, Integer> > vars;
 	static int indentationLevel = 0;
+	static File javaFile = null;
+	static FileWriter writer = null;
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		patterns = new HashMap<String, Pattern>();
 		vars = new ArrayList< HashMap<String, Integer> >();
 		setUpPatterns();
+
+		try {
+			javaFile = new File(args[0] + "java");
+			writer = new FileWriter(javaFile.getName());
+			if (javaFile.createNewFile()) 
+				System.out.println("File created: " + javaFile.getName());
+			else
+				System.out.println("File already exists");
+		} catch (IOException e) {
+			System.out.println("Error making file");
+			e.printStackTrace();
+		}
+
 		try {
 			File file = new File(args[0]);
 			Scanner in = new Scanner(file);
@@ -300,7 +314,45 @@ public class Parser {
 			return true;
 		return false;
 	}
+	
+	private static boolean isWhile(String expr) {
+		String words[] = expr.split(expr);
+		if (words[0].equals("while"))
+			return true;
+		return false;
+	}
 
+	private static boolean isFor(String expr) {
+		String words[] = expr.split(expr);
+		if (words[0].equals("for"))
+			return true;
+		return false;
+	}
+
+	private static boolean isPrint(String expr) {
+		String words[] = expr.split(expr);
+		if (words[0].equals("print"))
+			return true;
+		return false;
+	}
+	
+	private static boolean isStart(String expr) {
+		String words[] = expr.split(expr);
+		if (words[0].equals("start")) {
+			indentationLevel++;
+			return true;
+		}
+		return false;
+	}
+
+	private static boolean isEnd(String expr) {
+		String words[] = expr.split(expr);
+		if (words[0].equals("end")) {
+			indentationLevel--;
+			return true;
+		}
+		return false;
+	}
 
 	private static void setUpPatterns() {
 		Pattern number = Pattern.compile("-?\\d+(\\.\\d+)?");
@@ -354,6 +406,17 @@ public class Parser {
 			return "else_if";
 		if (isElse(line))
 			return "else";
+		if (isWhile(line))
+			return "while";
+		if (isFor(line))
+			return "for";
+		if (isPrint(line))
+			return "print";
+		if (isStart(line))
+			return "start";
+		if (isEnd(line))
+			return "end";
+
 		 // This is where we iterate through the patterns and find a match
 		for (String patternName : patterns.keySet()) {
 			Pattern tempPatter = patterns.get(patternName);
@@ -364,13 +427,97 @@ public class Parser {
 		return null;
 	}
 
-	private static void translate(String line, String string) {
-		// Want to output the correct translation to Java
-
-		
+	private static void translate(String line, String patternName) throws IOException {
 		// output translation to file
+		System.out.println("Translating line: " + line);
+		if (patternName.equals("if"))
+			writer.write(translatedIf(line));
+		if (patternName.equals("else_if"))
+			writer.write(translatedElseIf(line));
+		if (patternName.equals("else"))
+			writer.write(translatedElse(line));
+		if (patternName.equals("while"))
+			writer.write(translatedWhile(line));
+		if (patternName.equals("for"))
+			writer.write(translatedFor(line));
+		if (patternName.equals("print"))
+			writer.write(translatedPrint(line));
+		if (patternName.equals("start"))
+			writer.write(translatedStart(line));
+		if (patternName.equals("end"))
+			writer.write(translatedEnd(line));
+
+		System.out.println("Line translated");
+			
+	}
+
+	private static String translatedIf(String line) {
+		String[] words = line.split(" ");
+		int index = line.indexOf(words[1]);
+		String arg = line.substring(index);
+		return "if (" + arg + ")";
+	}
+
+	private static String translatedElse(String line) {
+		return "else ";
+	}
+
+	private static String translatedElseIf(String line) {
+		String[] words = line.split(" ");
+		int index = line.indexOf(words[1]);
+		String arg = line.substring(index);
+		return "else if (" + arg + ")";
+	}
+
+	private static String translatedWhile(String line) {
+		String[] words = line.split(" ");
+		int index = line.indexOf(words[1]);
+		String arg = line.substring(index);
+		return "while (" + arg + ")";
+	}
+
+	private static String translatedFor(String line) {
+		String[] words = line.split(" ");
+		String counter = words[1];
+		String start = words[3];
+		int startInt = Integer.parseInt(start);
+		String end = words[5];
+		int endInt = Integer.parseInt(end);
+		boolean exists = false;
+		for (HashMap<String, Integer> variableSet : vars) {
+			if (variableSet.containsKey(counter)) {
+				exists = true;
+				if (variableSet.get(counter) != 0) {
+					System.out.println("SYNTAX ERROR: Can't pass in a non-integer as a counter variable in a for-loop.");
+					System.exit(1);
+				}
+			}
+		}
+		
+		String addOn = exists ? "" : "int ";
+		// need to see how this performs when startInt == endInt
+		if (startInt < endInt)  
+			return "for (" + addOn + counter + " = " + start + "; " + counter + " < " + end + "; " + counter + "++)";
+		else if (startInt > endInt)  
+			return "for (" + addOn + counter + " = " + start + "; " + counter + " > " + end + "; " + counter + "--)";
+		else
+			return "for (" + addOn + counter + " = " + start + "; " + counter + " == " + end + "; " + counter + "++)";
+	}
+
+	private static String translatedPrint(String line) {
+		String[] words = line.split(" ");
+		int index = line.indexOf(words[1]);
+		String arg = line.substring(index);
+		return "System.out.print(" + arg + ");";
+	}
+
+	private static String translatedStart(String line) {
+		return "{";
 	}
 	
+	private static String translatedEnd(String line) {
+		return "}";
+	}
 	
 
 	//THIS IS NOT NECESSARY, WE COULD MAP THIS TO AN INT ABOVE
