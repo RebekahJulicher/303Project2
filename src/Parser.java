@@ -67,12 +67,12 @@ public class Parser {
 		}
 	}
 	
-	private static void defineVar(String line, String[] args){
+	private static String defineVar(String line, String[] args){
 		String[] strArray = line.split(" ");
 		String content = "";
 		for (int i = 3; i < strArray.length; i++) content += strArray[i];
 		if (vars.get(vars.size()-1).get(strArray[1]) != null) {  // If name already exists, error
-				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been" +
+				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been " +
 									"defined, cannot define it again!");
 				System.exit(1);
 		}
@@ -82,19 +82,20 @@ public class Parser {
 			line.contains(">") || line.contains("<") || line.contains(" and ") ||
 			line.contains(" not ") || line.contains(" or ")){
 			// HANDLE VARS/COMMAND LINE ARGS
+			
+			//TODO: Implement boolean expression checking
+			
 			vars.get(vars.size() - 1).put(strArray[1], 1);
-			// TODO: Write appropriate thing to file
-			return;
+			return "boolean " + strArray[1] + " = " + content + ";";
 		}
 		
 		// Checking for int expression
 		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
-				line.contains("%") || line.contains("-") || isInt(strArray[3])){
+				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
 			
 			if (!checkIntExpr(content, args)) System.exit(1);
 			vars.get(vars.size() - 1).put(strArray[1], 0);
-			// TODO: Write appropriate thing to file
-			return;
+			return "int " + strArray[1] + " = " + content + ";";
 		}
 		
 		//HANDLE VARS AND COMMAND LINE ARGS
@@ -104,18 +105,20 @@ public class Parser {
 				System.exit(1);
 			}
 			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
+				
 				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 0);
+				return "int " + strArray[1] + " = Integer.valueOf(" + strArray[3] + ");";
 			}
 			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
 						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
+				
 				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 1);
+				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
 			}
 			else {
-				System.out.println("SYNTAX ERROR: Command line argument input is not int or boolean");
+				System.out.println("SYNTAX ERROR: Command line argument input is not int");
 				System.exit(1);
 			}
-			// TODO: Write appropriate thing to file
-			return;
 		}
 		
 		// Checking if we're defining var in terms of another var
@@ -124,12 +127,13 @@ public class Parser {
 				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
 				Integer original = x.get(strArray[3]);
 				vars.get(vars.size() - 1).put(strArray[1], original);
-				// TODO: Write appropriate thing to file
-				return;
+				if (original == 0) return "int " + strArray[1] + " = " + strArray[3] + ";";
+				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
 			}
 		}
 		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
 		System.exit(1);
+		return "\\";
 	}
 	
 	
@@ -226,13 +230,16 @@ public class Parser {
 		if (!precededByVal) System.out.println("SYNTAX ERROR: Integer expression does not end with val");
 		return precededByVal;
 	}
+	
 
-	private static void setVar(String line){
+	private static String setVar(String line, String[] args){
 		String[] strArray = line.split(" ");
 		Integer type = vars.get(vars.size()-1).get(strArray[1]);
+		String content = "";
+		for (int i = 3; i < strArray.length; i++) content += strArray[i];
 		
 		if (type == null){
-			System.out.println("SYNTAX ERROR: Var " + strArray[0] + " has not been" +
+			System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has not been" +
 									"defined, cannot set it!");
 			System.exit(1);
 		}
@@ -241,46 +248,71 @@ public class Parser {
 			line.contains(">") || line.contains("<") || line.contains(" and ") ||
 			line.contains(" not ") || line.contains(" or ")){
 			if (type != 1){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
+				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
 									"type boolean, so it cannot be set to a boolean!");
 				System.exit(1);
 			}
-			// TODO: Write appropriate thing to file
-			return;
+			// TODO: Check boolean expression
+			return strArray[1] + " = " + content + ";";
 		}
 		
 		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
-				line.contains("%") || line.contains("-") || isInt(strArray[3])){
+				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
 			if (type != 0){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
+				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
 									"type int, so it cannot be set to an int!");
 				System.exit(1);
 			}
-			// TODO: Write appropriate thing to file
-			return;
+			if (!checkIntExpr(content, args)) System.exit(1);
+			return strArray[1] + " = " + content + ";";
 		}
 		
-		// TODO: Handle variables
-		/*
-		// Checking if we're defining var in terms of another var
-		for (HashMap<String, VarContent> x : vars){
-			if (x.get(strArray[2]) != null){
-				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
-				VarContent original = x.get(strArray[2]);
-				if (original.type == content.type){
-					if (original.type == 0) content.integerVal = original.integerVal;
-					else content.boolVal = original.boolVal;
-					return;
+		//HANDLE VARS AND COMMAND LINE ARGS
+		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
+			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+				System.out.println("SYNTAX ERROR: Invalid arg index");
+				System.exit(1);
+			}
+			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
+				if (type != 0){
+					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+										"type int, so it cannot be set to an int!");
+					System.exit(1);
 				}
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of the " +
-									"same type as var " + strArray[2]);
+				return strArray[1] + " = " + content + ";";
+			}
+			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
+						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
+				
+				if (type != 1){
+					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+										"type boolean, so it cannot be set to a boolean!");
+					System.exit(1);
+				}
+				return strArray[1] + " = " + content + ";";
+			}
+			else {
+				System.out.println("SYNTAX ERROR: Command line argument input is not int");
 				System.exit(1);
 			}
 		}
-		System.out.println("SYNTAX ERROR: Invalid variable declaration.");
+		
+		// Checking if we're defining var in terms of another var
+		for (HashMap<String, Integer> x : vars){
+			if (x.get(strArray[1]) != null){
+				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
+				Integer newVal = x.get(strArray[3]);
+				if (!type.equals(newVal)){
+					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
+										" the same type as var "+ strArray[3] + ", invalid!");
+					System.exit(1);
+				}
+				return strArray[1] + " = " + strArray[3] + ";";
+			}
+		}
+		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
 		System.exit(1);
-		// TODO: ERROR OUT
-		 */
+		return "\\";
 	}
 	
 	private static boolean isInt(String expr) {
@@ -517,17 +549,6 @@ public class Parser {
 	
 	private static String translatedEnd(String line) {
 		return "}";
-	}
-	
-
-	//THIS IS NOT NECESSARY, WE COULD MAP THIS TO AN INT ABOVE
-	static class VarContent {
-		// 0 for int, 1 for boolean
-		int type;
-		public VarContent(int type){
-			this.type = type;
-		}
-
 	}
 
 }
