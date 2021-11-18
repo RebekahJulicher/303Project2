@@ -5,7 +5,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -551,4 +553,40 @@ public class Parser {
 		return "}";
 	}
 
+	private static boolean validBooleanExpression(String expr) {
+		String[] parts = expr.split(" ");
+
+		String[] boolOpsArray = {"and", "or", "not"};
+		List<String> boolOps = Arrays.asList(boolOpsArray);
+		String[] compOpsArray = {"==", "<=", ">=", "!=", "<>"};
+		List<String> compOps = Arrays.asList(compOpsArray);
+		String[] boolValsArray = {"true", "false"};
+		List<String> boolVals = Arrays.asList(boolValsArray);
+		
+		boolean currIsInt = false;
+
+		String soFar = "";
+		for (int i = 0; i < parts.length; i++) {
+			String curr = parts[i];
+			if (boolOps.contains(curr) && currIsInt) {
+				if (!checkIntExpr(soFar, null)) {
+					System.out.println("SYNTAX ERROR: Invalid integer expression");
+					System.exit(1);
+				}
+				soFar = "";
+			} else if (compOps.contains(curr)) {
+				currIsInt = true;
+				if (!checkIntExpr(soFar, null)) {
+					System.out.println("SYNTAX ERROR: Invalid integer expression");
+					System.exit(1);
+				}
+			}
+			// TODO: Add parentheses BS
+			if (boolVals.contains(curr) || isInt(curr)) {
+				
+			}
+				
+		}
+		return true;
+	}
 }
