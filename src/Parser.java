@@ -564,28 +564,98 @@ public class Parser {
 		List<String> boolVals = Arrays.asList(boolValsArray);
 		
 		boolean currIsInt = false;
+		boolean precededByVal = false; // For making sure we're following val op val op
 
 		String soFar = "";
+		int openPar = 0;
+		int closedPar = 0;
 		for (int i = 0; i < parts.length; i++) {
 			String curr = parts[i];
-			if (boolOps.contains(curr) && currIsInt) {
+			if (curr.charAt(0) == '(') {
+				openPar++;
+				curr = curr.substring(1);
+			}
+			else if (curr.charAt(curr.length()-1) == ')') {
+				closedPar++;
+				curr = curr.substring(0, curr.length());
+			}
+			
+			if (boolOps.contains(curr) && currIsInt) {  // If curr is a bool operator and the last read expression is an int expr
+				if (!precededByVal) {
+					System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+					return false;
+				}
+				precededByVal = false;
 				if (!checkIntExpr(soFar, null)) {
 					System.out.println("SYNTAX ERROR: Invalid integer expression");
-					System.exit(1);
+					return false;
 				}
 				soFar = "";
-			} else if (compOps.contains(curr)) {
-				currIsInt = true;
+				currIsInt = false;
+			}
+			else if (compOps.contains(curr)) {    // If curr is a comparative operator
+				if (!precededByVal) {
+					System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+					return false;
+				}
+				if (!currIsInt) {
+					System.out.println("SYNTAX ERROR: Comparative operator not preceded by int expr.");
+					return false;
+				}
+				precededByVal = false;
 				if (!checkIntExpr(soFar, null)) {
 					System.out.println("SYNTAX ERROR: Invalid integer expression");
-					System.exit(1);
+					return false;
+				}
+				soFar = "";
+			}
+			if (!boolVals.contains(curr) && !isInt(curr)) {  // If not a bool val and not an integer, check for vars and int ops
+				if (curr.length() == 1 && isOp(curr.charAt(0))) {
+					if (!precededByVal) {
+						System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+						return false;
+					}
+					if (!currIsInt) {
+						System.out.println("SYNTAX ERROR: Comparative operator not preceded by int expr.");
+						return false;
+					}
+					precededByVal = false;
+					soFar += " " + curr.charAt(0);
+				}
+				else {
+					// CHECKING VAL OP VAL ORDERING
+					if (precededByVal) {
+						System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+						return false;
+					}
+					precededByVal = true;
+					
+					Integer type = vars.get(vars.size()-1).get(curr);
+					if (type == null) {
+						System.out.println("SYNTAX ERROR: Invalid var in bool expr.");
+						return false;
+					}
+					else if (type == 0) {    // If type is int
+						currIsInt = true;
+						soFar += " " + curr;
+					}
+					else {    // If type is bool, check to be sure it's not encroaching on int expr
+						if (currIsInt) {
+							System.out.println("SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
+							return false;
+						}
+					}
 				}
 			}
-			// TODO: Add parentheses BS
-			if (boolVals.contains(curr) || isInt(curr)) {
 				
-			}
-				
+		}
+		if (!(openPar == closedPar)) {
+			System.out.println("SYNTAX ERROR: Boolean expr parentheses mismatch");
+			return false;
+		}
+		if (!precededByVal) {
+			System.out.println("SYNTAX ERROR: Expression ends with operator");
+			return false;
 		}
 		return true;
 	}
