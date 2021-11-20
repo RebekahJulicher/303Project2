@@ -87,6 +87,13 @@ public class Parser {
 		return true;
 	}
 	
+	private static boolean isAssignment(String expr) {
+		String words[] = expr.split(" ");
+		if (words[1].equals("="))
+			return true;
+		return false;
+	}
+	
 	private static boolean isIf(String expr) {
 		String words[] = expr.split(" ");
 		if (words[0].equals("if"))
@@ -169,7 +176,9 @@ public class Parser {
 		Pattern integer = Pattern.compile(digit + "+");
 		patterns.put("int", integer);
 		
-		String commandLineArg = "$arg[" + integer + "]";
+		String commandLineArg = "arg[" + integer + "]";
+		Pattern commandLineArgP = Pattern.compile(commandLineArg);
+		patterns.put("commandLineArg", commandLineArgP);
 		
 		String variable = "[\\w&&[^\\d]]+[\\d*[\\w&&[^\\d]]*]*";
 		// value is going to need bool_expr, i_expr, and string
@@ -200,6 +209,8 @@ public class Parser {
 	}
 	
 	private static String IDPattern(String line) {
+		if (isAssignment(line))
+			return "assign";
 		if (isIf(line))
 			return "if";
 		if (isElseIf(line))
@@ -232,6 +243,8 @@ public class Parser {
 	private static void translate(String line, String patternName) throws IOException {
 		// output translation to file
 		System.out.println("Translating line: " + line);
+		if (patternName.equals("assign"))
+			writer.write(translatedAssign(line));
 		if (patternName.equals("if"))
 			writer.write(translatedIf(line));
 		if (patternName.equals("else_if"))
@@ -254,7 +267,31 @@ public class Parser {
 		System.out.println("Line translated");
 			
 	}
-
+	
+	private static String translatedAssign(String line) {
+		String[] words = line.split(" ");
+		int index = line.indexOf(words[2]);
+		String arg = line.substring(index);
+		if (checkBoolExpr(arg, null)) {
+			String replacedAnd = arg.replaceAll("and", "&&");
+			String replacedOr = replacedAnd.replaceAll("or", "||");
+			return "boolean " + words[0] + " = " + replacedOr;
+		} else if (checkIntExpr(arg, null)) {
+			return "int " + words[0] + " = " + arg;
+		} else {
+			System.out.println("SYNTAX ERROR: Invalid variable assignment");
+			System.exit(1);
+		}
+		/*
+		if (!checkBoolExpr(arg, null))
+			System.exit(1);
+		String replacedAnd = arg.replaceAll("and", "&&");
+		String replacedOr = replacedAnd.replaceAll("or", "||");
+		return "if (" + replacedOr + ")";
+		*/
+		return null;
+	}
+	
 	private static String translatedIf(String line) {
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
