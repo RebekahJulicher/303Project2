@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Parser {
+	static int lineNum = 0;
 	static HashMap<String, Pattern> patterns;
 	static ArrayList< HashMap<String, Integer> > vars;
 	static int indentationLevel = 0;
@@ -44,6 +45,7 @@ public class Parser {
 			writer.write("public class ParsedCode {\n\tpublic static void main(String[] args) {");
 			
 			while (in.hasNextLine()) {
+				lineNum++;
 				String line = in.nextLine().trim();
 				if (Pattern.matches("\\S+#.*", line)) // remove trailing comment from line
 					line = line.split("#", 2)[0];
@@ -60,9 +62,9 @@ public class Parser {
 					translate(line, IDPattern(line));
 				
 				if (indentationLevel < 0) 
-					System.out.println("SYNTAX ERROR: More \"end\" statements than \"start\" statements in code.");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: More \"end\" statements than \"start\" statements in code.");
 				if (indentationLevel > 0) 
-					System.out.println("SYNTAX ERROR: More \"start\" statements than \"end\" statements in code.");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: More \"start\" statements than \"end\" statements in code.");
 
 			}
 			in.close();
@@ -279,7 +281,7 @@ public class Parser {
 			if (variableSet.containsKey(counter)) {
 				exists = true;
 				if (variableSet.get(counter) != 0) {
-					System.out.println("SYNTAX ERROR: Can't pass in a non-integer as a counter variable in a for-loop.");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Can't pass in a non-integer as a counter variable in a for-loop.");
 					System.exit(1);
 				}
 			}
@@ -315,7 +317,7 @@ public class Parser {
 		String content = "";
 		for (int i = 3; i < strArray.length; i++) content += strArray[i];
 		if (vars.get(vars.size()-1).get(strArray[1]) != null) {  // If name already exists, error
-				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been " +
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[1] + " has already been " +
 									"defined, cannot define it again!");
 				System.exit(1);
 		}
@@ -343,7 +345,7 @@ public class Parser {
 		//HANDLE VARS AND COMMAND LINE ARGS
 		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
 			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-				System.out.println("SYNTAX ERROR: Invalid arg index");
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
 				System.exit(1);
 			}
 			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
@@ -358,7 +360,7 @@ public class Parser {
 				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
 			}
 			else {
-				System.out.println("SYNTAX ERROR: Command line argument input is not int");
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Command line argument input is not int");
 				System.exit(1);
 			}
 		}
@@ -373,7 +375,7 @@ public class Parser {
 				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
 			}
 		}
-		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
+		System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Variable assignment to nonexistent variable");
 		System.exit(1);
 		return "\\";
 	}
@@ -391,7 +393,7 @@ public class Parser {
 		for (int i = 3; i < strArray.length; i++) content += strArray[i];
 		
 		if (type == null){
-			System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has not been" +
+			System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[1] + " has not been" +
 									"defined, cannot set it!");
 			System.exit(1);
 		}
@@ -400,7 +402,7 @@ public class Parser {
 			line.contains(">") || line.contains("<") || line.contains(" and ") ||
 			line.contains(" not ") || line.contains(" or ")){
 			if (type != 1){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
 									"type boolean, so it cannot be set to a boolean!");
 				System.exit(1);
 			}
@@ -411,7 +413,7 @@ public class Parser {
 		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
 				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
 			if (type != 0){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
 									"type int, so it cannot be set to an int!");
 				System.exit(1);
 			}
@@ -422,12 +424,12 @@ public class Parser {
 		//HANDLE VARS AND COMMAND LINE ARGS
 		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
 			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-				System.out.println("SYNTAX ERROR: Invalid arg index");
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
 				System.exit(1);
 			}
 			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
 				if (type != 0){
-					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
 										"type int, so it cannot be set to an int!");
 					System.exit(1);
 				}
@@ -437,14 +439,14 @@ public class Parser {
 						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
 				
 				if (type != 1){
-					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
 										"type boolean, so it cannot be set to a boolean!");
 					System.exit(1);
 				}
 				return strArray[1] + " = " + content + ";";
 			}
 			else {
-				System.out.println("SYNTAX ERROR: Command line argument input is not int");
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Command line argument input is not int");
 				System.exit(1);
 			}
 		}
@@ -455,14 +457,14 @@ public class Parser {
 				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
 				Integer newVal = x.get(strArray[3]);
 				if (!type.equals(newVal)){
-					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
 										" the same type as var "+ strArray[3] + ", invalid!");
 					System.exit(1);
 				}
 				return strArray[1] + " = " + strArray[3] + ";";
 			}
 		}
-		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
+		System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Variable assignment to nonexistent variable");
 		System.exit(1);
 		return "\\";
 	}
@@ -478,26 +480,26 @@ public class Parser {
 				char c = line.charAt(i);
 				if (c == '(') {
 					if (i < line.length()-1 && isOp(line.charAt(i+1))){
-						System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
 						return false;
 					}
 					numOpenPar++;
 				}
 				else if (c == ')') {
 					if (i > 0 && isOp(line.charAt(i-1))){
-						System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
 						return false;
 					}
 					numClosedPar++;
 					if (numClosedPar > numOpenPar) {
-						System.out.println("SYNTAX ERROR: Unmatched parentheses");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Unmatched parentheses");
 						return false;
 					}
 				}
 				else soFar += c;
 			}
 			if (numOpenPar != numClosedPar) {
-				System.out.println("SYNTAX ERROR: Unmatched parentheses");
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Unmatched parentheses");
 				return false;
 			}
 			
@@ -507,7 +509,7 @@ public class Parser {
 				// If curr string is operator
 				if (isOp(strArray[i].charAt(0))) {
 					if (!precededByVal) {
-						System.out.println("SYNTAX ERROR: Operator not preceded by value");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator not preceded by value");
 						return false;
 					}
 					precededByVal = false;
@@ -515,7 +517,7 @@ public class Parser {
 				// If curr string is number
 				else if (patterns.get("number").matcher(strArray[i]).matches()) {
 					if (precededByVal) {
-						System.out.println("SYNTAX ERROR: Value not preceded by operator");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
 						return false;
 					}
 					precededByVal = true;
@@ -523,12 +525,12 @@ public class Parser {
 				// If curr string is command line argument
 				else if (patterns.get("commandLineArg").matcher(strArray[i]).matches()) {
 					if (args.length <= Integer.valueOf(strArray[i].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-						System.out.println("SYNTAX ERROR: Invalid arg index");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
 						return false;
 					}
 					if (patterns.get("number").matcher(args[Integer.valueOf(strArray[i].charAt(5))]).matches()) {
 						if (precededByVal) {
-							System.out.println("SYNTAX ERROR: Value not preceded by operator");
+							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
 							return false;
 						}
 						precededByVal = true;
@@ -538,7 +540,7 @@ public class Parser {
 				else {
 					if (patterns.get("number").matcher(strArray[i]).matches()) {
 						if (precededByVal) {
-							System.out.println("SYNTAX ERROR: Value not preceded by operator");
+							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
 							return false;
 						}
 						precededByVal = true;
@@ -546,13 +548,13 @@ public class Parser {
 					for (HashMap<String, Integer> x : vars){
 						if (x.get(strArray[i]) != null && !precededByVal) precededByVal = true;
 						else {
-							System.out.println("SYNTAX ERROR: Integer expression contains nonexistent variable");
+							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Integer expression contains nonexistent variable");
 							return false;
 						}
 					}
 				}
 			}
-			if (!precededByVal) System.out.println("SYNTAX ERROR: Integer expression does not end with val");
+			if (!precededByVal) System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Integer expression does not end with val");
 			return precededByVal;
 		}
 
@@ -585,12 +587,12 @@ public class Parser {
 			
 			if (boolOps.contains(curr) && currIsInt) {  // If curr is a bool operator and the last read expression is an int expr
 				if (!precededByVal) {
-					System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
 					return false;
 				}
 				precededByVal = false;
 				if (!checkIntExpr(soFar, null)) {
-					System.out.println("SYNTAX ERROR: Invalid integer expression");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid integer expression");
 					return false;
 				}
 				soFar = "";
@@ -598,16 +600,16 @@ public class Parser {
 			}
 			else if (compOps.contains(curr)) {    // If curr is a comparative operator
 				if (!precededByVal) {
-					System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
 					return false;
 				}
 				if (!currIsInt) {
-					System.out.println("SYNTAX ERROR: Comparative operator not preceded by int expr.");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Comparative operator not preceded by int expr.");
 					return false;
 				}
 				precededByVal = false;
 				if (!checkIntExpr(soFar, null)) {
-					System.out.println("SYNTAX ERROR: Invalid integer expression");
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid integer expression");
 					return false;
 				}
 				soFar = "";
@@ -615,11 +617,11 @@ public class Parser {
 			if (!boolVals.contains(curr) && !isInt(curr)) {  // If not a bool val and not an integer, check for vars and int ops
 				if (curr.length() == 1 && isOp(curr.charAt(0))) {
 					if (!precededByVal) {
-						System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
 						return false;
 					}
 					if (!currIsInt) {
-						System.out.println("SYNTAX ERROR: Comparative operator not preceded by int expr.");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Comparative operator not preceded by int expr.");
 						return false;
 					}
 					precededByVal = false;
@@ -628,15 +630,15 @@ public class Parser {
 				// If curr string is command line argument
 				else if (patterns.get("commandLineArg").matcher(curr).matches()) {
 					if (args.length <= Integer.valueOf(curr.charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-						System.out.println("SYNTAX ERROR: Invalid arg index");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
 						return false;
 					}
 					if (precededByVal) {
-						System.out.println("SYNTAX ERROR: Value not preceded by operator");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
 						return false;
 					}
 					if (patterns.get("bool").matcher(args[Integer.valueOf(curr.charAt(5))]).matches() && currIsInt) {
-						System.out.println("SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
 						return false;
 					}
 					else if (patterns.get("number").matcher(args[Integer.valueOf(curr.charAt(5))]).matches()) {
@@ -644,7 +646,7 @@ public class Parser {
 						soFar += " " + curr;
 					}
 					else {
-						System.out.println("SYNTAX ERROR: Invalid command line argument format");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid command line argument format");
 						return false;
 					}
 					precededByVal = true;
@@ -652,14 +654,14 @@ public class Parser {
 				else {
 					// CHECKING VAL OP VAL ORDERING
 					if (precededByVal) {
-						System.out.println("SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
 						return false;
 					}
 					precededByVal = true;
 					
 					Integer type = vars.get(vars.size()-1).get(curr);
 					if (type == null) {
-						System.out.println("SYNTAX ERROR: Invalid var in bool expr.");
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid var in bool expr.");
 						return false;
 					}
 					else if (type == 0) {    // If type is int
@@ -668,7 +670,7 @@ public class Parser {
 					}
 					else {    // If type is bool, check to be sure it's not encroaching on int expr
 						if (currIsInt) {
-							System.out.println("SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
+							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
 							return false;
 						}
 					}
@@ -677,11 +679,11 @@ public class Parser {
 				
 		}
 		if (!(openPar == closedPar)) {
-			System.out.println("SYNTAX ERROR: Boolean expr parentheses mismatch");
+			System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Boolean expr parentheses mismatch");
 			return false;
 		}
 		if (!precededByVal) {
-			System.out.println("SYNTAX ERROR: Expression ends with operator");
+			System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Expression ends with operator");
 			return false;
 		}
 		return true;
