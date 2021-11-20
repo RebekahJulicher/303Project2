@@ -60,13 +60,13 @@ public class Parser {
 
 				if (!ignore)
 					translate(line, IDPattern(line));
-				
-				if (indentationLevel < 0) 
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: More \"end\" statements than \"start\" statements in code.");
-				if (indentationLevel > 0) 
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: More \"start\" statements than \"end\" statements in code.");
-
 			}
+			
+			if (indentationLevel < 0) 
+				System.out.println("SYNTAX ERROR: More \"end\" statements than \"start\" statements in code.");
+			if (indentationLevel > 0) 
+				System.out.println("SYNTAX ERROR: More \"start\" statements than \"end\" statements in code.");
+			
 			in.close();
 			writer.write("\t}\n}");
 		} catch (FileNotFoundException e) {
@@ -125,6 +125,13 @@ public class Parser {
 	private static boolean isPrint(String expr) {
 		String words[] = expr.split(" ");
 		if (words[0].equals("print"))
+			return true;
+		return false;
+	}
+	
+	private static boolean isPrintL(String expr) {
+		String words[] = expr.split(" ");
+		if (words[0].equals("printl"))
 			return true;
 		return false;
 	}
@@ -205,6 +212,8 @@ public class Parser {
 			return "for";
 		if (isPrint(line))
 			return "print";
+		if (isPrintL(line))
+			return "printl";
 		if (isStart(line))
 			return "start";
 		if (isEnd(line))
@@ -235,6 +244,8 @@ public class Parser {
 			writer.write(translatedFor(line));
 		if (patternName.equals("print"))
 			writer.write(translatedPrint(line));
+		if (patternName.equals("printl"))
+			writer.write(translatedPrintL(line));
 		if (patternName.equals("start"))
 			writer.write(translatedStart(line));
 		if (patternName.equals("end"))
@@ -248,7 +259,11 @@ public class Parser {
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
-		return "if (" + arg + ")";
+		if (!checkBoolExpr(arg, null))
+			System.exit(1);
+		String replacedAnd = arg.replaceAll("and", "&&");
+		String replacedOr = replacedAnd.replaceAll("or", "||");
+		return "if (" + replacedOr + ")";
 	}
 
 	private static String translatedElse(String line) {
@@ -259,14 +274,22 @@ public class Parser {
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
-		return "else if (" + arg + ")";
+		if (!checkBoolExpr(arg, null))
+			System.exit(1);
+		String replacedAnd = arg.replaceAll("and", "&&");
+		String replacedOr = replacedAnd.replaceAll("or", "||");
+		return "else if (" + replacedOr + ")";
 	}
 
 	private static String translatedWhile(String line) {
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
-		return "while (" + arg + ")";
+		if (!checkBoolExpr(arg, null))
+			System.exit(1);
+		String replacedAnd = arg.replaceAll("and", "&&");
+		String replacedOr = replacedAnd.replaceAll("or", "||");
+		return "while (" + replacedOr + ")";
 	}
 
 	private static String translatedFor(String line) {
@@ -280,7 +303,7 @@ public class Parser {
 		for (HashMap<String, Integer> variableSet : vars) {
 			if (variableSet.containsKey(counter)) {
 				exists = true;
-				if (variableSet.get(counter) != 0) {
+				if (!checkIntExpr(counter, null)) {
 					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Can't pass in a non-integer as a counter variable in a for-loop.");
 					System.exit(1);
 				}
@@ -289,12 +312,15 @@ public class Parser {
 		
 		String addOn = exists ? "" : "int ";
 		// need to see how this performs when startInt == endInt
+		return "for (" + addOn + counter + " = " + start + "; " + counter + " < " + end + "; " + counter + "++)";
+		/*
 		if (startInt < endInt)  
 			return "for (" + addOn + counter + " = " + start + "; " + counter + " < " + end + "; " + counter + "++)";
 		else if (startInt > endInt)  
 			return "for (" + addOn + counter + " = " + start + "; " + counter + " > " + end + "; " + counter + "--)";
 		else
 			return "for (" + addOn + counter + " = " + start + "; " + counter + " == " + end + "; " + counter + "++)";
+		*/
 	}
 
 	private static String translatedPrint(String line) {
@@ -302,6 +328,13 @@ public class Parser {
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
 		return "System.out.print(" + arg + ");";
+	}
+	
+	private static String translatedPrintL(String line) {
+		String[] words = line.split(" ");
+		int index = line.indexOf(words[1]);
+		String arg = line.substring(index);
+		return "System.out.println(" + arg + ");";
 	}
 
 	private static String translatedStart(String line) {
