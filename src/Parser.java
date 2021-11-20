@@ -311,6 +311,51 @@ public class Parser {
 	private static String translatedEnd(String line) {
 		return "}";
 	}
+
+	private static boolean isBoolExpr(String line) {
+		return line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
+		line.contains(">") || line.contains("<") || line.contains(" and ") || line.contains(" not ") ||
+		line.contains(" or ") || line.contains("true") || line.contains("false");
+	}
+	
+	private static boolean containsIntExpr(String line) {
+		String[] strArray = line.split(" ");
+		return line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
+		line.contains("%") || line.contains("-") || isInt(strArray[3]);
+	}
+	
+	private static String handleExpr(boolean isDefinition, boolean isBool, String content, String name, String[] args) {
+		Integer type = vars.get(vars.size()-1).get(name);
+		
+		if (isDefinition && isBool) {
+			if (!checkBoolExpr(content, args)) System.exit(1);
+			vars.get(vars.size() - 1).put(name, 1);
+			return "boolean " + name + " = " + content + ";";
+		}
+		else if (isDefinition && !isBool) {
+			if (!checkIntExpr(content, args)) System.exit(1);
+			vars.get(vars.size() - 1).put(name, 0);
+			return "int " + name + " = " + content + ";";
+		}
+		else if (!isDefinition && isBool) {
+			if (type != 1){
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + name + 
+						" is not of type boolean, so it cannot be set to a boolean!");
+				System.exit(1);
+			}
+			if (!checkBoolExpr(content, args)) System.exit(1);
+			return name + " = " + content + ";";
+		}
+		else {
+			if (type != 0){
+				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + name + 
+						" is not of type int, so it cannot be set to an int!");
+				System.exit(1);
+			}
+			if (!checkIntExpr(content, args)) System.exit(1);
+			return name + " = " + content + ";";
+		}
+	}
 	
 	private static String defineVar(String line, String[] args){
 		String[] strArray = line.split(" ");
@@ -323,24 +368,10 @@ public class Parser {
 		}
 		
 		// Checking for boolean expression
-		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
-			line.contains(">") || line.contains("<") || line.contains(" and ") ||
-			line.contains(" not ") || line.contains(" or ")){
-			// HANDLE VARS/COMMAND LINE ARGS
-			
-			if (!checkBoolExpr(content, args)) System.exit(1);
-			vars.get(vars.size() - 1).put(strArray[1], 1);
-			return "boolean " + strArray[1] + " = " + content + ";";
-		}
+		if (isBoolExpr(line)) return handleExpr(true, true, content, strArray[1], args);
 		
 		// Checking for int expression
-		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
-				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
-			
-			if (!checkIntExpr(content, args)) System.exit(1);
-			vars.get(vars.size() - 1).put(strArray[1], 0);
-			return "int " + strArray[1] + " = " + content + ";";
-		}
+		if (containsIntExpr(line)) return handleExpr(true, false, content, strArray[1], args); 
 		
 		//HANDLE VARS AND COMMAND LINE ARGS
 		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
@@ -384,7 +415,6 @@ public class Parser {
 	private static boolean isOp(char item) {
 		return item == '+' || item == '-' || item == '*' || item == '/' || item == '%';
 	}
-	
 
 	private static String setVar(String line, String[] args){
 		String[] strArray = line.split(" ");
@@ -398,28 +428,9 @@ public class Parser {
 			System.exit(1);
 		}
 		
-		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
-			line.contains(">") || line.contains("<") || line.contains(" and ") ||
-			line.contains(" not ") || line.contains(" or ")){
-			if (type != 1){
-				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-									"type boolean, so it cannot be set to a boolean!");
-				System.exit(1);
-			}
-			if (!checkBoolExpr(content, args)) System.exit(1);
-			return strArray[1] + " = " + content + ";";
-		}
+		if (isBoolExpr(line)) return handleExpr(false, true, content, strArray[0], args);
 		
-		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
-				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
-			if (type != 0){
-				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-									"type int, so it cannot be set to an int!");
-				System.exit(1);
-			}
-			if (!checkIntExpr(content, args)) System.exit(1);
-			return strArray[1] + " = " + content + ";";
-		}
+		if (containsIntExpr(line)) return handleExpr(false, false, content, strArray[0], args);
 		
 		//HANDLE VARS AND COMMAND LINE ARGS
 		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
