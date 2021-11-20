@@ -88,49 +88,49 @@ public class Parser {
 	}
 	
 	private static boolean isIf(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if (words[0].equals("if"))
 			return true;
 		return false;
 	}
 
 	private static boolean isElseIf(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if ((words[0] + words[1]).equals("elseif"))
 			return true;
 		return false;
 	}
 	
 	private static boolean isElse(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if (words[0].equals("else"))
 			return true;
 		return false;
 	}
 	
 	private static boolean isWhile(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if (words[0].equals("while"))
 			return true;
 		return false;
 	}
 
 	private static boolean isFor(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if (words[0].equals("for"))
 			return true;
 		return false;
 	}
 
 	private static boolean isPrint(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if (words[0].equals("print"))
 			return true;
 		return false;
 	}
 	
 	private static boolean isStart(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if (words[0].equals("start")) {
 			indentationLevel++;
 			return true;
@@ -139,7 +139,7 @@ public class Parser {
 	}
 
 	private static boolean isEnd(String expr) {
-		String words[] = expr.split(expr);
+		String words[] = expr.split(" ");
 		if (words[0].equals("end")) {
 			indentationLevel--;
 			return true;
