@@ -27,11 +27,12 @@ public class Parser {
 
 		try {
 			javaFile = new File("compiled/" + args[0].replaceAll(".txt", ".java"));
-			writer = new FileWriter(javaFile.getName());
 			if (javaFile.createNewFile()) 
 				System.out.println("File created: " + javaFile.getName());
 			else
 				System.out.println("File already exists");
+			System.out.println(javaFile.getName());
+			writer = new FileWriter(javaFile);
 		} catch (IOException e) {
 			System.out.println("Error making file");
 			e.printStackTrace();
@@ -43,6 +44,7 @@ public class Parser {
 			boolean commentBlock = false;
 			
 			writer.write("public class ParsedCode {\n\tpublic static void main(String[] args) {");
+			writer.flush();
 			
 			while (in.hasNextLine()) {
 				lineNum++;
