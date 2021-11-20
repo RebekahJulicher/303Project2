@@ -26,7 +26,7 @@ public class Parser {
 		setUpPatterns();
 
 		try {
-			javaFile = new File(args[0] + "java");
+			javaFile = new File("compiled/" + args[0].replaceAll(".txt", ".java"));
 			writer = new FileWriter(javaFile.getName());
 			if (javaFile.createNewFile()) 
 				System.out.println("File created: " + javaFile.getName());
@@ -38,7 +38,7 @@ public class Parser {
 		}
 
 		try {
-			File file = new File(args[0]);
+			File file = new File("scripts/" + args[0]);
 			Scanner in = new Scanner(file);
 			boolean commentBlock = false;
 			
