@@ -40,6 +40,9 @@ public class Parser {
 			File file = new File(args[0]);
 			Scanner in = new Scanner(file);
 			boolean commentBlock = false;
+			
+			writer.write("public class ParsedCode {\n\tpublic static void main(String[] args) {");
+			
 			while (in.hasNextLine()) {
 				String line = in.nextLine().trim();
 				if (Pattern.matches("\\S+#.*", line)) // remove trailing comment from line
@@ -63,259 +66,13 @@ public class Parser {
 
 			}
 			in.close();
+			writer.write("\t}\n}");
 		} catch (FileNotFoundException e) {
 			System.out.println("File " + args[0] + " could not be found!");
 			e.printStackTrace();
 		}
 	}
 	
-	private static String defineVar(String line, String[] args){
-		String[] strArray = line.split(" ");
-		String content = "";
-		for (int i = 3; i < strArray.length; i++) content += strArray[i];
-		if (vars.get(vars.size()-1).get(strArray[1]) != null) {  // If name already exists, error
-				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been " +
-									"defined, cannot define it again!");
-				System.exit(1);
-		}
-		
-		// Checking for boolean expression
-		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
-			line.contains(">") || line.contains("<") || line.contains(" and ") ||
-			line.contains(" not ") || line.contains(" or ")){
-			// HANDLE VARS/COMMAND LINE ARGS
-			
-			//TODO: Implement boolean expression checking
-			
-			vars.get(vars.size() - 1).put(strArray[1], 1);
-			return "boolean " + strArray[1] + " = " + content + ";";
-		}
-		
-		// Checking for int expression
-		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
-				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
-			
-			if (!checkIntExpr(content, args)) System.exit(1);
-			vars.get(vars.size() - 1).put(strArray[1], 0);
-			return "int " + strArray[1] + " = " + content + ";";
-		}
-		
-		//HANDLE VARS AND COMMAND LINE ARGS
-		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
-			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-				System.out.println("SYNTAX ERROR: Invalid arg index");
-				System.exit(1);
-			}
-			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
-				
-				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 0);
-				return "int " + strArray[1] + " = Integer.valueOf(" + strArray[3] + ");";
-			}
-			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
-						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
-				
-				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 1);
-				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
-			}
-			else {
-				System.out.println("SYNTAX ERROR: Command line argument input is not int");
-				System.exit(1);
-			}
-		}
-		
-		// Checking if we're defining var in terms of another var
-		for (HashMap<String, Integer> x : vars){
-			if (x.get(strArray[1]) != null){
-				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
-				Integer original = x.get(strArray[3]);
-				vars.get(vars.size() - 1).put(strArray[1], original);
-				if (original == 0) return "int " + strArray[1] + " = " + strArray[3] + ";";
-				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
-			}
-		}
-		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
-		System.exit(1);
-		return "\\";
-	}
-	
-	
-	private static boolean isOp(char item) {
-		return item == '+' || item == '-' || item == '*' || item == '/' || item == '%';
-	}
-	
-	
-	// TODO: THIS CURRENTLY DOES NOT ACCOUNT FOR EXTRA SPACES BETWEEN OPS AND PARENTHESES
-	private static boolean checkIntExpr(String line, String[] args) {
-		int numOpenPar = 0;
-		int numClosedPar = 0;
-		boolean precededByVal = false;
-		String soFar = "";
-		// Checking for equal parentheses and removing them from the issue
-		for (int i = 0; i < line.length(); i++) {
-			char c = line.charAt(i);
-			if (c == '(') {
-				if (i < line.length()-1 && isOp(line.charAt(i+1))){
-					System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
-					return false;
-				}
-				numOpenPar++;
-			}
-			else if (c == ')') {
-				if (i > 0 && isOp(line.charAt(i-1))){
-					System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
-					return false;
-				}
-				numClosedPar++;
-				if (numClosedPar > numOpenPar) {
-					System.out.println("SYNTAX ERROR: Unmatched parentheses");
-					return false;
-				}
-			}
-			else soFar += c;
-		}
-		if (numOpenPar != numClosedPar) {
-			System.out.println("SYNTAX ERROR: Unmatched parentheses");
-			return false;
-		}
-		
-		// Handling value/operator pairing checking
-		String[] strArray = soFar.split(" ");
-		for (int i = 0; i < strArray.length; i++) {
-			// If curr string is operator
-			if (isOp(strArray[i].charAt(0))) {
-				if (!precededByVal) {
-					System.out.println("SYNTAX ERROR: Operator not preceded by value");
-					return false;
-				}
-				precededByVal = false;
-			}
-			// If curr string is number
-			else if (patterns.get("number").matcher(strArray[i]).matches()) {
-				if (precededByVal) {
-					System.out.println("SYNTAX ERROR: Value not preceded by operator");
-					return false;
-				}
-				precededByVal = true;
-			}
-			// If curr string is command line argument
-			else if (patterns.get("commandLineArg").matcher(strArray[i]).matches()) {
-				if (args.length <= Integer.valueOf(strArray[i].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-					System.out.println("SYNTAX ERROR: Invalid arg index");
-					return false;
-				}
-				if (patterns.get("number").matcher(args[Integer.valueOf(strArray[i].charAt(5))]).matches()) {
-					if (precededByVal) {
-						System.out.println("SYNTAX ERROR: Value not preceded by operator");
-						return false;
-					}
-					precededByVal = true;
-				}
-			}
-			// Else if curr string can only otherwise be a variable name
-			else {
-				if (patterns.get("number").matcher(strArray[i]).matches()) {
-					if (precededByVal) {
-						System.out.println("SYNTAX ERROR: Value not preceded by operator");
-						return false;
-					}
-					precededByVal = true;
-				}
-				for (HashMap<String, Integer> x : vars){
-					if (x.get(strArray[i]) != null && !precededByVal) precededByVal = true;
-					else {
-						System.out.println("SYNTAX ERROR: Integer expression contains nonexistent variable");
-						return false;
-					}
-				}
-			}
-		}
-		if (!precededByVal) System.out.println("SYNTAX ERROR: Integer expression does not end with val");
-		return precededByVal;
-	}
-	
-
-	private static String setVar(String line, String[] args){
-		String[] strArray = line.split(" ");
-		Integer type = vars.get(vars.size()-1).get(strArray[1]);
-		String content = "";
-		for (int i = 3; i < strArray.length; i++) content += strArray[i];
-		
-		if (type == null){
-			System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has not been" +
-									"defined, cannot set it!");
-			System.exit(1);
-		}
-		
-		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
-			line.contains(">") || line.contains("<") || line.contains(" and ") ||
-			line.contains(" not ") || line.contains(" or ")){
-			if (type != 1){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-									"type boolean, so it cannot be set to a boolean!");
-				System.exit(1);
-			}
-			// TODO: Check boolean expression
-			return strArray[1] + " = " + content + ";";
-		}
-		
-		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
-				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
-			if (type != 0){
-				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-									"type int, so it cannot be set to an int!");
-				System.exit(1);
-			}
-			if (!checkIntExpr(content, args)) System.exit(1);
-			return strArray[1] + " = " + content + ";";
-		}
-		
-		//HANDLE VARS AND COMMAND LINE ARGS
-		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
-			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-				System.out.println("SYNTAX ERROR: Invalid arg index");
-				System.exit(1);
-			}
-			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
-				if (type != 0){
-					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-										"type int, so it cannot be set to an int!");
-					System.exit(1);
-				}
-				return strArray[1] + " = " + content + ";";
-			}
-			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
-						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
-				
-				if (type != 1){
-					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-										"type boolean, so it cannot be set to a boolean!");
-					System.exit(1);
-				}
-				return strArray[1] + " = " + content + ";";
-			}
-			else {
-				System.out.println("SYNTAX ERROR: Command line argument input is not int");
-				System.exit(1);
-			}
-		}
-		
-		// Checking if we're defining var in terms of another var
-		for (HashMap<String, Integer> x : vars){
-			if (x.get(strArray[1]) != null){
-				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
-				Integer newVal = x.get(strArray[3]);
-				if (!type.equals(newVal)){
-					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
-										" the same type as var "+ strArray[3] + ", invalid!");
-					System.exit(1);
-				}
-				return strArray[1] + " = " + strArray[3] + ";";
-			}
-		}
-		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
-		System.exit(1);
-		return "\\";
-	}
 	
 	private static boolean isInt(String expr) {
 		if (expr == null)
@@ -552,8 +309,254 @@ public class Parser {
 	private static String translatedEnd(String line) {
 		return "}";
 	}
+	
+	private static String defineVar(String line, String[] args){
+		String[] strArray = line.split(" ");
+		String content = "";
+		for (int i = 3; i < strArray.length; i++) content += strArray[i];
+		if (vars.get(vars.size()-1).get(strArray[1]) != null) {  // If name already exists, error
+				System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has already been " +
+									"defined, cannot define it again!");
+				System.exit(1);
+		}
+		
+		// Checking for boolean expression
+		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
+			line.contains(">") || line.contains("<") || line.contains(" and ") ||
+			line.contains(" not ") || line.contains(" or ")){
+			// HANDLE VARS/COMMAND LINE ARGS
+			
+			if (!checkBoolExpr(content, args)) System.exit(1);
+			vars.get(vars.size() - 1).put(strArray[1], 1);
+			return "boolean " + strArray[1] + " = " + content + ";";
+		}
+		
+		// Checking for int expression
+		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
+				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
+			
+			if (!checkIntExpr(content, args)) System.exit(1);
+			vars.get(vars.size() - 1).put(strArray[1], 0);
+			return "int " + strArray[1] + " = " + content + ";";
+		}
+		
+		//HANDLE VARS AND COMMAND LINE ARGS
+		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
+			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+				System.out.println("SYNTAX ERROR: Invalid arg index");
+				System.exit(1);
+			}
+			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
+				
+				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 0);
+				return "int " + strArray[1] + " = Integer.valueOf(" + strArray[3] + ");";
+			}
+			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
+						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
+				
+				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 1);
+				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
+			}
+			else {
+				System.out.println("SYNTAX ERROR: Command line argument input is not int");
+				System.exit(1);
+			}
+		}
+		
+		// Checking if we're defining var in terms of another var
+		for (HashMap<String, Integer> x : vars){
+			if (x.get(strArray[1]) != null){
+				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
+				Integer original = x.get(strArray[3]);
+				vars.get(vars.size() - 1).put(strArray[1], original);
+				if (original == 0) return "int " + strArray[1] + " = " + strArray[3] + ";";
+				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
+			}
+		}
+		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
+		System.exit(1);
+		return "\\";
+	}
+	
+	
+	private static boolean isOp(char item) {
+		return item == '+' || item == '-' || item == '*' || item == '/' || item == '%';
+	}
+	
 
-	private static boolean validBooleanExpression(String expr) {
+	private static String setVar(String line, String[] args){
+		String[] strArray = line.split(" ");
+		Integer type = vars.get(vars.size()-1).get(strArray[1]);
+		String content = "";
+		for (int i = 3; i < strArray.length; i++) content += strArray[i];
+		
+		if (type == null){
+			System.out.println("SYNTAX ERROR: Var " + strArray[1] + " has not been" +
+									"defined, cannot set it!");
+			System.exit(1);
+		}
+		
+		if (line.contains("==") || line.contains("<=") || line.contains(">=") || line.contains("<>") ||
+			line.contains(">") || line.contains("<") || line.contains(" and ") ||
+			line.contains(" not ") || line.contains(" or ")){
+			if (type != 1){
+				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+									"type boolean, so it cannot be set to a boolean!");
+				System.exit(1);
+			}
+			if (!checkBoolExpr(content, args)) System.exit(1);
+			return strArray[1] + " = " + content + ";";
+		}
+		
+		if (line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
+				line.contains("%") || line.contains("-") || patterns.get("number").matcher(strArray[3]).matches()){
+			if (type != 0){
+				System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+									"type int, so it cannot be set to an int!");
+				System.exit(1);
+			}
+			if (!checkIntExpr(content, args)) System.exit(1);
+			return strArray[1] + " = " + content + ";";
+		}
+		
+		//HANDLE VARS AND COMMAND LINE ARGS
+		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
+			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+				System.out.println("SYNTAX ERROR: Invalid arg index");
+				System.exit(1);
+			}
+			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
+				if (type != 0){
+					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+										"type int, so it cannot be set to an int!");
+					System.exit(1);
+				}
+				return strArray[1] + " = " + content + ";";
+			}
+			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
+						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
+				
+				if (type != 1){
+					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
+										"type boolean, so it cannot be set to a boolean!");
+					System.exit(1);
+				}
+				return strArray[1] + " = " + content + ";";
+			}
+			else {
+				System.out.println("SYNTAX ERROR: Command line argument input is not int");
+				System.exit(1);
+			}
+		}
+		
+		// Checking if we're defining var in terms of another var
+		for (HashMap<String, Integer> x : vars){
+			if (x.get(strArray[1]) != null){
+				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
+				Integer newVal = x.get(strArray[3]);
+				if (!type.equals(newVal)){
+					System.out.println("SYNTAX ERROR: Var " + strArray[0] + " is not of" + 
+										" the same type as var "+ strArray[3] + ", invalid!");
+					System.exit(1);
+				}
+				return strArray[1] + " = " + strArray[3] + ";";
+			}
+		}
+		System.out.println("SYNTAX ERROR: Variable assignment to nonexistent variable");
+		System.exit(1);
+		return "\\";
+	}
+	
+	// THIS CURRENTLY DOES NOT ACCOUNT FOR EXTRA SPACES BETWEEN OPS AND PARENTHESES
+		private static boolean checkIntExpr(String line, String[] args) {
+			int numOpenPar = 0;
+			int numClosedPar = 0;
+			boolean precededByVal = false;
+			String soFar = "";
+			// Checking for equal parentheses and removing them from the issue
+			for (int i = 0; i < line.length(); i++) {
+				char c = line.charAt(i);
+				if (c == '(') {
+					if (i < line.length()-1 && isOp(line.charAt(i+1))){
+						System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
+						return false;
+					}
+					numOpenPar++;
+				}
+				else if (c == ')') {
+					if (i > 0 && isOp(line.charAt(i-1))){
+						System.out.println("SYNTAX ERROR: Operator directly after parenthesis");
+						return false;
+					}
+					numClosedPar++;
+					if (numClosedPar > numOpenPar) {
+						System.out.println("SYNTAX ERROR: Unmatched parentheses");
+						return false;
+					}
+				}
+				else soFar += c;
+			}
+			if (numOpenPar != numClosedPar) {
+				System.out.println("SYNTAX ERROR: Unmatched parentheses");
+				return false;
+			}
+			
+			// Handling value/operator pairing checking
+			String[] strArray = soFar.split(" ");
+			for (int i = 0; i < strArray.length; i++) {
+				// If curr string is operator
+				if (isOp(strArray[i].charAt(0))) {
+					if (!precededByVal) {
+						System.out.println("SYNTAX ERROR: Operator not preceded by value");
+						return false;
+					}
+					precededByVal = false;
+				}
+				// If curr string is number
+				else if (patterns.get("number").matcher(strArray[i]).matches()) {
+					if (precededByVal) {
+						System.out.println("SYNTAX ERROR: Value not preceded by operator");
+						return false;
+					}
+					precededByVal = true;
+				}
+				// If curr string is command line argument
+				else if (patterns.get("commandLineArg").matcher(strArray[i]).matches()) {
+					if (args.length <= Integer.valueOf(strArray[i].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+						System.out.println("SYNTAX ERROR: Invalid arg index");
+						return false;
+					}
+					if (patterns.get("number").matcher(args[Integer.valueOf(strArray[i].charAt(5))]).matches()) {
+						if (precededByVal) {
+							System.out.println("SYNTAX ERROR: Value not preceded by operator");
+							return false;
+						}
+						precededByVal = true;
+					}
+				}
+				// Else if curr string can only otherwise be a variable name
+				else {
+					if (patterns.get("number").matcher(strArray[i]).matches()) {
+						if (precededByVal) {
+							System.out.println("SYNTAX ERROR: Value not preceded by operator");
+							return false;
+						}
+						precededByVal = true;
+					}
+					for (HashMap<String, Integer> x : vars){
+						if (x.get(strArray[i]) != null && !precededByVal) precededByVal = true;
+						else {
+							System.out.println("SYNTAX ERROR: Integer expression contains nonexistent variable");
+							return false;
+						}
+					}
+				}
+			}
+			if (!precededByVal) System.out.println("SYNTAX ERROR: Integer expression does not end with val");
+			return precededByVal;
+		}
+
+	private static boolean checkBoolExpr(String expr, String[] args) {
 		String[] parts = expr.split(" ");
 
 		String[] boolOpsArray = {"and", "or", "not"};
@@ -621,6 +624,30 @@ public class Parser {
 					}
 					precededByVal = false;
 					soFar += " " + curr.charAt(0);
+				}
+				// If curr string is command line argument
+				else if (patterns.get("commandLineArg").matcher(curr).matches()) {
+					if (args.length <= Integer.valueOf(curr.charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+						System.out.println("SYNTAX ERROR: Invalid arg index");
+						return false;
+					}
+					if (precededByVal) {
+						System.out.println("SYNTAX ERROR: Value not preceded by operator");
+						return false;
+					}
+					if (patterns.get("bool").matcher(args[Integer.valueOf(curr.charAt(5))]).matches() && currIsInt) {
+						System.out.println("SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
+						return false;
+					}
+					else if (patterns.get("number").matcher(args[Integer.valueOf(curr.charAt(5))]).matches()) {
+						currIsInt = true;
+						soFar += " " + curr;
+					}
+					else {
+						System.out.println("SYNTAX ERROR: Invalid command line argument format");
+						return false;
+					}
+					precededByVal = true;
 				}
 				else {
 					// CHECKING VAL OP VAL ORDERING
