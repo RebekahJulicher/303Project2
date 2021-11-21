@@ -178,7 +178,7 @@ public class Parser {
 		Pattern integer = Pattern.compile(digit + "+");
 		patterns.put("int", integer);
 		
-		String commandLineArg = "arg[" + integer + "]";
+		String commandLineArg = "arg\\[" + integer + "\\]";
 		Pattern commandLineArgP = Pattern.compile(commandLineArg);
 		patterns.put("commandLineArg", commandLineArgP);
 		
@@ -712,7 +712,11 @@ public class Parser {
 				}
 				// If curr string is command line argument
 				else if (patterns.get("commandLineArg").matcher(curr).matches()) {
-					if (args.length <= Integer.valueOf(curr.charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+					//TODO: Fix this, args not working because it is null
+					//if (args.length <= Integer.valueOf(curr.charAt(4))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+					System.out.println(curr.charAt(4));
+					System.out.println(Integer.parseInt("" + curr.charAt(4)));
+					if (args.length <= Integer.parseInt(curr.charAt(4) + "")) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
 						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
 						return false;
 					}
@@ -742,6 +746,7 @@ public class Parser {
 					}
 					precededByVal = true;
 					
+					System.out.println(curr);
 					Integer type = vars.get(vars.size()-1).get(curr);
 					if (type == null) {
 						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid var in bool expr.");
