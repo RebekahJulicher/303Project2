@@ -43,7 +43,7 @@ public class Parser {
 			Scanner in = new Scanner(file);
 			boolean commentBlock = false;
 			
-			writer.write("public class ParsedCode {\n\tpublic static void main(String[] args) {");
+			writer.write("public class ParsedCode {\n\tpublic static void main(String[] args) {\n");
 			writer.flush();
 			
 			while (in.hasNextLine()) {
@@ -178,7 +178,7 @@ public class Parser {
 		Pattern integer = Pattern.compile(digit + "+");
 		patterns.put("int", integer);
 		
-		String commandLineArg = "arg\\[" + integer + "\\]";
+		String commandLineArg = "args\\[" + integer + "\\]";
 		Pattern commandLineArgP = Pattern.compile(commandLineArg);
 		patterns.put("commandLineArg", commandLineArgP);
 		
@@ -244,29 +244,36 @@ public class Parser {
 
 	private static void translate(String line, String patternName) throws IOException {
 		// output translation to file
+		String initialTab = "\t\t";
+		for (int i = 0; i < indentationLevel; i++)
+			initialTab += "\t";
+		writer.write(initialTab);
 		System.out.println("Translating line: " + line);
-		if (patternName.equals("assign"))
+		System.out.println("This line is a: " + patternName);
+		if (patternName.equals("assign")) 
 			writer.write(translatedAssign(line));
-		if (patternName.equals("if"))
+		else if (patternName.equals("if"))
 			writer.write(translatedIf(line));
-		if (patternName.equals("else_if"))
+		else if (patternName.equals("else_if"))
 			writer.write(translatedElseIf(line));
-		if (patternName.equals("else"))
+		else if (patternName.equals("else"))
 			writer.write(translatedElse(line));
-		if (patternName.equals("while"))
+		else if (patternName.equals("while"))
 			writer.write(translatedWhile(line));
-		if (patternName.equals("for"))
+		else if (patternName.equals("for"))
 			writer.write(translatedFor(line));
-		if (patternName.equals("print"))
+		else if (patternName.equals("print"))
 			writer.write(translatedPrint(line));
-		if (patternName.equals("printl"))
+		else if (patternName.equals("printl"))
 			writer.write(translatedPrintL(line));
-		if (patternName.equals("start"))
+		else if (patternName.equals("start"))
 			writer.write(translatedStart(line));
-		if (patternName.equals("end"))
+		else if (patternName.equals("end"))
 			writer.write(translatedEnd(line));
 
+		writer.write("\n");
 		System.out.println("Line translated");
+		writer.flush();
 			
 	}
 	
@@ -277,9 +284,9 @@ public class Parser {
 		if (checkBoolExpr(arg, null)) {
 			String replacedAnd = arg.replaceAll("and", "&&");
 			String replacedOr = replacedAnd.replaceAll("or", "||");
-			return "boolean " + words[0] + " = " + replacedOr;
+			return "boolean " + words[0] + " = " + replacedOr + ";";
 		} else if (checkIntExpr(arg, null)) {
-			return "int " + words[0] + " = " + arg;
+			return "int " + words[0] + " = " + arg + ";";
 		} else {
 			System.out.println("SYNTAX ERROR: Invalid variable assignment");
 			System.exit(1);
@@ -607,6 +614,8 @@ public class Parser {
 				}
 				// If curr string is command line argument
 				else if (patterns.get("commandLineArg").matcher(strArray[i]).matches()) {
+					return true;
+					/*
 					if (args.length <= Integer.valueOf(strArray[i].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
 						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
 						return false;
@@ -618,6 +627,7 @@ public class Parser {
 						}
 						precededByVal = true;
 					}
+					*/
 				}
 				// Else if curr string can only otherwise be a variable name
 				else {
@@ -712,8 +722,10 @@ public class Parser {
 				}
 				// If curr string is command line argument
 				else if (patterns.get("commandLineArg").matcher(curr).matches()) {
+					return false;
 					//TODO: Fix this, args not working because it is null
 					//if (args.length <= Integer.valueOf(curr.charAt(4))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+					/*
 					System.out.println(curr.charAt(4));
 					System.out.println(Integer.parseInt("" + curr.charAt(4)));
 					if (args.length <= Integer.parseInt(curr.charAt(4) + "")) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
@@ -737,6 +749,7 @@ public class Parser {
 						return false;
 					}
 					precededByVal = true;
+					*/
 				}
 				else {
 					// CHECKING VAL OP VAL ORDERING
