@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 public class Parser {
 	static int lineNum = 0;
 	static HashMap<String, Pattern> patterns;
-	static ArrayList< HashMap<String, Integer> > vars;
+	static ArrayList< HashMap<String, Integer> > vars = null;
 	static int indentationLevel = 0;
 	static File javaFile = null;
 	static FileWriter writer = null;
@@ -23,6 +23,7 @@ public class Parser {
 	public static void main(String[] args) throws IOException {
 		patterns = new HashMap<String, Pattern>();
 		vars = new ArrayList< HashMap<String, Integer> >();
+		vars.add(new HashMap<String,Integer>());
 		setUpPatterns();
 
 		try {
@@ -43,26 +44,32 @@ public class Parser {
 			Scanner in = new Scanner(file);
 			boolean commentBlock = false;
 			
-			writer.write("public class ParsedCode {\n\tpublic static void main(String[] args) {\n");
+			writer.write("package compiled;\npublic class " + args[0].substring(0,args[0].length()-4) +
+							" {\n\tpublic static void main(String[] args) {\n");
 			writer.flush();
 			
 			while (in.hasNextLine()) {
 				lineNum++;
 				String line = in.nextLine().trim();
-				if (Pattern.matches("\\S+#.*", line)) // remove trailing comment from line
-					line = line.split("#", 2)[0];
-
-				boolean ignore = false;
-				if (commentBlock)
-					ignore = true;
-				if (line.charAt(0) == '$')
-					commentBlock = !commentBlock;
-				if (line.charAt(0) == '#' && !commentBlock)
-					ignore = true;
-
-				if (!ignore)
-					translate(line, IDPattern(line));
+				if (line.length() > 0) {
+					if (Pattern.matches("\\S+#.*", line)) // remove trailing comment from line
+						line = line.split("#", 2)[0];
+	
+					boolean ignore = false;
+					if (commentBlock)
+						ignore = true;
+					if (line.charAt(0) == '$')
+						commentBlock = !commentBlock;
+					if (line.charAt(0) == '#' && !commentBlock)
+						ignore = true;
+	
+					if (!ignore)
+						//System.out.println("     preparing to translate line...");
+						translate(line, IDPattern(line));
+				}
 			}
+			writer.write("\t}\n}");
+			writer.flush();
 			
 			if (indentationLevel < 0) 
 				System.out.println("SYNTAX ERROR: More \"end\" statements than \"start\" statements in code.");
@@ -70,11 +77,11 @@ public class Parser {
 				System.out.println("SYNTAX ERROR: More \"start\" statements than \"end\" statements in code.");
 			
 			in.close();
-			writer.write("\t}\n}");
 		} catch (FileNotFoundException e) {
 			System.out.println("File " + args[0] + " could not be found!");
 			e.printStackTrace();
 		}
+		System.out.println("FINISHED");
 	}
 	
 	
@@ -82,7 +89,7 @@ public class Parser {
 		if (expr == null)
 			return false;
 		try {
-			int x = Integer.parseInt(expr);
+			Integer.parseInt(expr);
 		} catch (NumberFormatException e) {
 			return false;
 		}
@@ -90,6 +97,13 @@ public class Parser {
 	}
 	
 	private static boolean isAssignment(String expr) {
+		String words[] = expr.split(" ");
+		if (words[0].equals("make"))
+			return true;
+		return false;
+	}
+	
+	private static boolean isVarSet(String expr) {
 		String words[] = expr.split(" ");
 		if (words[1].equals("="))
 			return true;
@@ -148,7 +162,6 @@ public class Parser {
 	private static boolean isStart(String expr) {
 		String words[] = expr.split(" ");
 		if (words[0].equals("start")) {
-			indentationLevel++;
 			return true;
 		}
 		return false;
@@ -166,12 +179,6 @@ public class Parser {
 	private static void setUpPatterns() {
 		Pattern number = Pattern.compile("-?\\d+(\\.\\d+)?");
 		patterns.put("number", number);
-		//String comment = "$+[\\d*[\\w&&[^\\d]]*]*";
-		String comment = "$.*";
-		//String string = "\"[\\d*[\\w&&[^\\d]]*]*\"";
-		String string = "\".*\"";
-		
-		String character = "'.'";
 
 		String digit = "\\d";
 		String bool = "true|false";
@@ -188,18 +195,6 @@ public class Parser {
 		
 		Pattern var_assgn = Pattern.compile("var " + variable + " = " + value);
 		patterns.put("var_assgn", var_assgn);
-		
-		// Need to make i_expr code without breaking java
-		Pattern commu_op = Pattern.compile("[+-]");
-		Pattern assoc_op = Pattern.compile("[*/%]");
-		String expr_root_string = "(" + variable + "|" + integer + ")";
-		Pattern un_expr = Pattern.compile("(~" + expr_root_string + "|" + expr_root_string + ")");
-		Pattern assoc_expr = Pattern.compile(un_expr + "(" + assoc_op + un_expr + ")*");
-		Pattern i_expr = Pattern.compile(assoc_expr + "(" + commu_op + assoc_expr + ")*");
-		
-		expr_root_string = "(" + variable + "|" + integer + "|" + i_expr + ")";
-		Pattern expr_root = Pattern.compile(expr_root_string);
-		// expr_root string outdated
 
 		// Need to make bool_expr code without breaking java
 
@@ -211,6 +206,10 @@ public class Parser {
 	}
 	
 	private static String IDPattern(String line) {
+		if (isStart(line))
+			return "start";
+		if (isEnd(line))
+			return "end";
 		if (isAssignment(line))
 			return "assign";
 		if (isIf(line))
@@ -227,10 +226,6 @@ public class Parser {
 			return "print";
 		if (isPrintL(line))
 			return "printl";
-		if (isStart(line))
-			return "start";
-		if (isEnd(line))
-			return "end";
 
 		 // This is where we iterate through the patterns and find a match
 		for (String patternName : patterns.keySet()) {
@@ -266,8 +261,10 @@ public class Parser {
 			writer.write(translatedPrint(line));
 		else if (patternName.equals("printl"))
 			writer.write(translatedPrintL(line));
-		else if (patternName.equals("start"))
+		else if (patternName.equals("start")) {
 			writer.write(translatedStart(line));
+			indentationLevel++;
+		}
 		else if (patternName.equals("end"))
 			writer.write(translatedEnd(line));
 
@@ -279,14 +276,17 @@ public class Parser {
 	
 	private static String translatedAssign(String line) {
 		String[] words = line.split(" ");
-		int index = line.indexOf(words[2]);
-		String arg = line.substring(index);
-		if (checkBoolExpr(arg, null)) {
+		String arg = line.substring(5);
+		defineVar(line);
+		
+		if (checkBoolExpr(arg)) {
 			String replacedAnd = arg.replaceAll("and", "&&");
 			String replacedOr = replacedAnd.replaceAll("or", "||");
-			return "boolean " + words[0] + " = " + replacedOr + ";";
-		} else if (checkIntExpr(arg, null)) {
-			return "int " + words[0] + " = " + arg + ";";
+			return "boolean " + replacedOr + ";";
+		} else if (checkIntExpr(arg)) {
+			String replacedArg = arg.replaceAll("args", "Integer.valueOf(args");
+			String replacedEndArg = replacedArg.replaceAll("]", "])");
+			return "int "  + replacedEndArg + ";";
 		} else {
 			System.out.println("SYNTAX ERROR: Invalid variable assignment");
 			System.exit(1);
@@ -305,7 +305,7 @@ public class Parser {
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
-		if (!checkBoolExpr(arg, null))
+		if (!checkBoolExpr(arg))
 			System.exit(1);
 		String replacedAnd = arg.replaceAll("and", "&&");
 		String replacedOr = replacedAnd.replaceAll("or", "||");
@@ -320,7 +320,7 @@ public class Parser {
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
-		if (!checkBoolExpr(arg, null))
+		if (!checkBoolExpr(arg))
 			System.exit(1);
 		String replacedAnd = arg.replaceAll("and", "&&");
 		String replacedOr = replacedAnd.replaceAll("or", "||");
@@ -331,7 +331,7 @@ public class Parser {
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
-		if (!checkBoolExpr(arg, null))
+		if (!checkBoolExpr(arg))
 			System.exit(1);
 		String replacedAnd = arg.replaceAll("and", "&&");
 		String replacedOr = replacedAnd.replaceAll("or", "||");
@@ -339,18 +339,66 @@ public class Parser {
 	}
 
 	private static String translatedFor(String line) {
+		vars.add(new HashMap<String,Integer>());
 		String[] words = line.split(" ");
 		String counter = words[1];
+		for (HashMap<String, Integer> x : vars){
+			if (x.get(counter) != null) {
+				System.out.println("Line " + lineNum + ": " + "SYNTAX ERROR: Invalid variable 1 used in for loop.");
+				System.exit(1);
+			}
+		}
+		vars.get(vars.size() - 1).put(counter, 0);
 		String start = words[3];
-		int startInt = Integer.parseInt(start);
+		try { Integer.parseInt(start); }
+		catch(NumberFormatException e) {
+			boolean found = false;
+			Integer startVar;
+			for (HashMap<String, Integer> x : vars){
+				startVar = x.get(start);
+				if (startVar != null) {
+					found = true;
+					if (startVar != 0) {
+						System.out.println("Line " + lineNum + ": " + "SYNTAX ERROR: Invalid variable 1 used in for loop.");
+						System.exit(1);
+					}
+				}
+			}
+			if (!found) {
+				System.out.println("Line " + lineNum + ": " + "SYNTAX ERROR: Invalid variable 2 used in for loop.");
+				System.exit(1);
+			}
+		}
+		//System.out.println("        translating for (int " + counter + " = " + startInt + ");");
 		String end = words[5];
-		int endInt = Integer.parseInt(end);
+		try { Integer.parseInt(end); }
+		catch(NumberFormatException e) {
+			boolean found = false;
+			//for (HashMap<String, Integer> x : vars) System.out.println(x.toString());
+			//System.out.println(end);
+			
+			Integer endVar;
+			for (HashMap<String, Integer> x : vars){
+				endVar = x.get(end);
+				if (endVar != null) {
+					found = true;
+					if (endVar != 0) {
+						System.out.println("Line " + lineNum + ": " + "SYNTAX ERROR: Invalid variable 3 used in for loop.");
+						System.exit(1);
+					}
+				}
+			}
+			if (!found) {
+				System.out.println("Line " + lineNum + ": " + "SYNTAX ERROR: Invalid variable 4 used in for loop.");
+				System.exit(1);
+			}
+		}
 		boolean exists = false;
 		for (HashMap<String, Integer> variableSet : vars) {
 			if (variableSet.containsKey(counter)) {
 				exists = true;
-				if (!checkIntExpr(counter, null)) {
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Can't pass in a non-integer as a counter variable in a for-loop.");
+				if (!checkIntExpr(counter)) {
+					System.out.println("Line " + lineNum + ": " + "SYNTAX ERROR: Can't pass in a non-integer as a counter variable in a for-loop.");
 					System.exit(1);
 				}
 			}
@@ -358,7 +406,7 @@ public class Parser {
 		
 		String addOn = exists ? "" : "int ";
 		// need to see how this performs when startInt == endInt
-		return "for (" + addOn + counter + " = " + start + "; " + counter + " < " + end + "; " + counter + "++)";
+		return "for (int " + addOn + counter + " = " + start + "; " + counter + " < " + end + "; " + counter + "++)";
 		/*
 		if (startInt < endInt)  
 			return "for (" + addOn + counter + " = " + start + "; " + counter + " < " + end + "; " + counter + "++)";
@@ -378,8 +426,8 @@ public class Parser {
 	
 	private static String translatedPrintL(String line) {
 		String[] words = line.split(" ");
-		int index = line.indexOf(words[1]);
-		String arg = line.substring(index);
+		//System.out.println(words[0]);
+		String arg = line.substring(7);
 		return "System.out.println(" + arg + ");";
 	}
 
@@ -400,21 +448,23 @@ public class Parser {
 	private static boolean containsIntExpr(String line) {
 		String[] strArray = line.split(" ");
 		return line.contains("+") || line.contains("-") || line.contains("/") || line.contains("*") ||
-		line.contains("%") || line.contains("-") || isInt(strArray[3]);
+		line.contains("%") || line.contains("-") || isInt(strArray[0]);
 	}
 	
-	private static String handleExpr(boolean isDefinition, boolean isBool, String content, String name, String[] args) {
+	private static boolean handleExpr(boolean isDefinition, boolean isBool, String content, String name) {
 		Integer type = vars.get(vars.size()-1).get(name);
 		
 		if (isDefinition && isBool) {
-			if (!checkBoolExpr(content, args)) System.exit(1);
+			if (!checkBoolExpr(content)) System.exit(1);
 			vars.get(vars.size() - 1).put(name, 1);
-			return "boolean " + name + " = " + content + ";";
+			return true;
+			//return "boolean " + name + " = " + content + ";";
 		}
 		else if (isDefinition && !isBool) {
-			if (!checkIntExpr(content, args)) System.exit(1);
+			if (!checkIntExpr(content)) System.exit(1);
 			vars.get(vars.size() - 1).put(name, 0);
-			return "int " + name + " = " + content + ";";
+			return true;
+			//return "int " + name + " = " + content + ";";
 		}
 		else if (!isDefinition && isBool) {
 			if (type != 1){
@@ -422,8 +472,9 @@ public class Parser {
 						" is not of type boolean, so it cannot be set to a boolean!");
 				System.exit(1);
 			}
-			if (!checkBoolExpr(content, args)) System.exit(1);
-			return name + " = " + content + ";";
+			if (!checkBoolExpr(content)) System.exit(1);
+			return true;
+			//return name + " = " + content + ";";
 		}
 		else {
 			if (type != 0){
@@ -431,12 +482,13 @@ public class Parser {
 						" is not of type int, so it cannot be set to an int!");
 				System.exit(1);
 			}
-			if (!checkIntExpr(content, args)) System.exit(1);
-			return name + " = " + content + ";";
+			if (!checkIntExpr(content)) System.exit(1);
+			return true;
+			//return name + " = " + content + ";";
 		}
 	}
 	
-	private static String defineVar(String line, String[] args){
+	private static boolean defineVar(String line){
 		String[] strArray = line.split(" ");
 		String content = "";
 		for (int i = 3; i < strArray.length; i++) content += strArray[i];
@@ -447,32 +499,16 @@ public class Parser {
 		}
 		
 		// Checking for boolean expression
-		if (isBoolExpr(line)) return handleExpr(true, true, content, strArray[1], args);
+		if (isBoolExpr(line)) return handleExpr(true, true, content, strArray[1]);
 		
 		// Checking for int expression
-		if (containsIntExpr(line)) return handleExpr(true, false, content, strArray[1], args); 
+		if (containsIntExpr(content)) return handleExpr(true, false, content, strArray[1]); 
 		
 		//HANDLE VARS AND COMMAND LINE ARGS
 		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
-			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
-				System.exit(1);
-			}
-			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
-				
-				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 0);
-				return "int " + strArray[1] + " = Integer.valueOf(" + strArray[3] + ");";
-			}
-			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
-						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
-				
-				vars.get(vars.size() - 1).put(args[Integer.valueOf(strArray[3].charAt(5))], 1);
-				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
-			}
-			else {
-				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Command line argument input is not int");
-				System.exit(1);
-			}
+			vars.get(vars.size() - 1).put(strArray[1], 0);
+			return true;
+			//return "int " + strArray[1] + " = Integer.valueOf(" + strArray[3] + ");";
 		}
 		
 		// Checking if we're defining var in terms of another var
@@ -481,13 +517,16 @@ public class Parser {
 				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
 				Integer original = x.get(strArray[3]);
 				vars.get(vars.size() - 1).put(strArray[1], original);
-				if (original == 0) return "int " + strArray[1] + " = " + strArray[3] + ";";
-				return "boolean " + strArray[1] + " = " + strArray[3] + ";";
+				if (original == 0) return true;
+				//if (original == 0) return "int " + strArray[1] + " = " + strArray[3] + ";";
+				return true;
+				//return "boolean " + strArray[1] + " = " + strArray[3] + ";";
 			}
 		}
 		System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Variable assignment to nonexistent variable");
 		System.exit(1);
-		return "\\";
+		return true;
+		//return "\\";
 	}
 	
 	
@@ -495,7 +534,7 @@ public class Parser {
 		return item == '+' || item == '-' || item == '*' || item == '/' || item == '%';
 	}
 
-	private static String setVar(String line, String[] args){
+	private static boolean setVar(String line){
 		String[] strArray = line.split(" ");
 		Integer type = vars.get(vars.size()-1).get(strArray[1]);
 		String content = "";
@@ -507,38 +546,14 @@ public class Parser {
 			System.exit(1);
 		}
 		
-		if (isBoolExpr(line)) return handleExpr(false, true, content, strArray[0], args);
+		if (isBoolExpr(line)) return handleExpr(false, true, content, strArray[0]);
 		
-		if (containsIntExpr(line)) return handleExpr(false, false, content, strArray[0], args);
+		if (containsIntExpr(content)) return handleExpr(false, false, content, strArray[0]);
 		
 		//HANDLE VARS AND COMMAND LINE ARGS
 		if (patterns.get("commandLineArg").matcher(strArray[3]).matches()) {
-			if (args.length <= Integer.valueOf(strArray[3].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
-				System.exit(1);
-			}
-			if (patterns.get("number").matcher(args[Integer.valueOf(strArray[3].charAt(5))]).matches()) {
-				if (type != 0){
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-										"type int, so it cannot be set to an int!");
-					System.exit(1);
-				}
-				return strArray[1] + " = " + content + ";";
-			}
-			else if (args[Integer.valueOf(strArray[3].charAt(5))].equals("true") ||
-						args[Integer.valueOf(strArray[3].charAt(5))].equals("false")){
-				
-				if (type != 1){
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " is not of " + 
-										"type boolean, so it cannot be set to a boolean!");
-					System.exit(1);
-				}
-				return strArray[1] + " = " + content + ";";
-			}
-			else {
-				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Command line argument input is not int");
-				System.exit(1);
-			}
+			return true;
+			//return strArray[1] + " = " + content + ";";
 		}
 		
 		// Checking if we're defining var in terms of another var
@@ -551,52 +566,55 @@ public class Parser {
 										" the same type as var "+ strArray[3] + ", invalid!");
 					System.exit(1);
 				}
-				return strArray[1] + " = " + strArray[3] + ";";
+				return true;
+				//return strArray[1] + " = " + strArray[3] + ";";
 			}
 		}
 		System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Variable assignment to nonexistent variable");
 		System.exit(1);
-		return "\\";
+		return true;
+		//return "\\";
 	}
 	
 	// THIS CURRENTLY DOES NOT ACCOUNT FOR EXTRA SPACES BETWEEN OPS AND PARENTHESES
-		private static boolean checkIntExpr(String line, String[] args) {
-			int numOpenPar = 0;
-			int numClosedPar = 0;
-			boolean precededByVal = false;
-			String soFar = "";
-			// Checking for equal parentheses and removing them from the issue
-			for (int i = 0; i < line.length(); i++) {
-				char c = line.charAt(i);
-				if (c == '(') {
-					if (i < line.length()-1 && isOp(line.charAt(i+1))){
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
-						return false;
-					}
-					numOpenPar++;
+	private static boolean checkIntExpr(String line) {
+		int numOpenPar = 0;
+		int numClosedPar = 0;
+		boolean precededByVal = false;
+		String soFar = "";
+		// Checking for equal parentheses and removing them from the issue
+		for (int i = 0; i < line.length(); i++) {
+			char c = line.charAt(i);
+			if (c == '(') {
+				if (i < line.length()-1 && isOp(line.charAt(i+1))){
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
+					return false;
 				}
-				else if (c == ')') {
-					if (i > 0 && isOp(line.charAt(i-1))){
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
-						return false;
-					}
-					numClosedPar++;
-					if (numClosedPar > numOpenPar) {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Unmatched parentheses");
-						return false;
-					}
+				numOpenPar++;
+			}
+			else if (c == ')') {
+				if (i > 0 && isOp(line.charAt(i-1))){
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
+					return false;
 				}
-				else soFar += c;
+				numClosedPar++;
+				if (numClosedPar > numOpenPar) {
+					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Unmatched parentheses");
+					return false;
+				}
 			}
-			if (numOpenPar != numClosedPar) {
-				System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Unmatched parentheses");
-				return false;
-			}
-			
-			// Handling value/operator pairing checking
-			String[] strArray = soFar.split(" ");
-			for (int i = 0; i < strArray.length; i++) {
-				// If curr string is operator
+			else soFar += c;
+		}
+		if (numOpenPar != numClosedPar) {
+			System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Unmatched parentheses");
+			return false;
+		}
+		
+		// Handling value/operator pairing checking
+		String[] strArray = soFar.split(" ");
+		for (int i = 0; i < strArray.length; i++) {
+			//System.out.println(soFar);
+			if (strArray[i].length() > 0) {
 				if (isOp(strArray[i].charAt(0))) {
 					if (!precededByVal) {
 						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator not preceded by value");
@@ -640,19 +658,22 @@ public class Parser {
 					}
 					for (HashMap<String, Integer> x : vars){
 						if (x.get(strArray[i]) != null && !precededByVal) precededByVal = true;
-						else {
-							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Integer expression contains nonexistent variable");
-							return false;
-						}
+					}
+					if (!precededByVal) {
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Integer expression contains nonexistent variable");
+						return false;
 					}
 				}
 			}
-			if (!precededByVal) System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Integer expression does not end with val");
-			return precededByVal;
 		}
+		if (!precededByVal) System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Integer expression does not end with val");
+		return precededByVal;
+	}
 
-	private static boolean checkBoolExpr(String expr, String[] args) {
-		String[] parts = expr.split(" ");
+	private static boolean checkBoolExpr(String expr) {
+		String[] parts = expr.split("\\s+");
+		
+		//System.out.println(parts[0]);
 
 		String[] boolOpsArray = {"and", "or", "not"};
 		List<String> boolOps = Arrays.asList(boolOpsArray);
@@ -669,110 +690,130 @@ public class Parser {
 		int closedPar = 0;
 		for (int i = 0; i < parts.length; i++) {
 			String curr = parts[i];
-			if (curr.charAt(0) == '(') {
-				openPar++;
-				curr = curr.substring(1);
-			}
-			else if (curr.charAt(curr.length()-1) == ')') {
-				closedPar++;
-				curr = curr.substring(0, curr.length());
-			}
 			
-			if (boolOps.contains(curr) && currIsInt) {  // If curr is a bool operator and the last read expression is an int expr
-				if (!precededByVal) {
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
-					return false;
+			if (curr.length() > 0) {
+				if (curr.charAt(0) == '(') {
+					openPar++;
+					curr = curr.substring(1);
 				}
-				precededByVal = false;
-				if (!checkIntExpr(soFar, null)) {
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid integer expression");
-					return false;
+				else if (curr.charAt(curr.length()-1) == ')') {
+					closedPar++;
+					curr = curr.substring(0, curr.length()-1);
 				}
-				soFar = "";
-				currIsInt = false;
-			}
-			else if (compOps.contains(curr)) {    // If curr is a comparative operator
-				if (!precededByVal) {
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
-					return false;
-				}
-				if (!currIsInt) {
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Comparative operator not preceded by int expr.");
-					return false;
-				}
-				precededByVal = false;
-				if (!checkIntExpr(soFar, null)) {
-					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid integer expression");
-					return false;
-				}
-				soFar = "";
-			}
-			if (!boolVals.contains(curr) && !isInt(curr)) {  // If not a bool val and not an integer, check for vars and int ops
-				if (curr.length() == 1 && isOp(curr.charAt(0))) {
-					if (!precededByVal) {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+				
+				if (curr == "true" || curr == "false") {
+					if (precededByVal) {
+						System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Val op val ordering not preserved at bool value");
 						return false;
 					}
-					if (!currIsInt) {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Comparative operator not preceded by int expr.");
+					precededByVal = true;
+				}
+				else if(isInt(curr)) {
+					if (precededByVal) {
+						System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Val op val ordering not preserved at int value");
+						return false;
+					}
+					precededByVal = true;
+					soFar += " " + curr;
+				}
+				else if (boolOps.contains(curr) && currIsInt) {  // If curr is a bool operator and the last read expression is an int expr
+					if (!precededByVal) {
+						System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Val op val ordering not preserved at boolOp");
 						return false;
 					}
 					precededByVal = false;
-					soFar += " " + curr.charAt(0);
+					if (!checkIntExpr(soFar)) {
+						System.out.println("Line: " + lineNum + ": " + "NOT BOOLEAN EXPR: Invalid integer expression");
+						return false;
+					}
+					soFar = "";
+					currIsInt = false;
 				}
-				// If curr string is command line argument
-				else if (patterns.get("commandLineArg").matcher(curr).matches()) {
-					return false;
-					//TODO: Fix this, args not working because it is null
-					//if (args.length <= Integer.valueOf(curr.charAt(4))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-					/*
-					System.out.println(curr.charAt(4));
-					System.out.println(Integer.parseInt("" + curr.charAt(4)));
-					if (args.length <= Integer.parseInt(curr.charAt(4) + "")) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
+				else if (compOps.contains(curr)) {    // If curr is a comparative operator
+					if (!precededByVal) {
+						System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Val op val ordering not preserved at compOp");
 						return false;
 					}
-					if (precededByVal) {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
+					if (!currIsInt) {
+						System.out.println("Line: " + lineNum + ": " + "NOT BOOLEAN EXPR: Comparative operator not preceded by int expr.");
 						return false;
 					}
-					if (patterns.get("bool").matcher(args[Integer.valueOf(curr.charAt(5))]).matches() && currIsInt) {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
+					precededByVal = false;
+					if (!checkIntExpr(soFar)) {
+						System.out.println("Line: " + lineNum + ": " + "NOT BOOLEAN EXPR: Invalid integer expression");
 						return false;
 					}
-					else if (patterns.get("number").matcher(args[Integer.valueOf(curr.charAt(5))]).matches()) {
-						currIsInt = true;
-						soFar += " " + curr;
-					}
-					else {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid command line argument format");
-						return false;
-					}
-					precededByVal = true;
-					*/
+					soFar = "";
 				}
-				else {
-					// CHECKING VAL OP VAL ORDERING
-					if (precededByVal) {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Val op val ordering not preserved in bool expr.");
+				else if (!boolVals.contains(curr) && !isInt(curr)) {  // If not a bool val and not an integer, check for vars and int ops
+					if (curr.length() == 1 && isOp(curr.charAt(0))) {
+						if (!precededByVal) {
+							System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Val op val ordering not preserved in bool expr at other val");
+							return false;
+						}
+						if (!currIsInt) {
+							System.out.println("Line: " + lineNum + ": " + "NOT BOOLEAN EXPR: Comparative operator not preceded by int expr.");
+							return false;
+						}
+						precededByVal = false;
+						soFar += " " + curr.charAt(0);
+					}
+					// If curr string is command line argument
+					else if (patterns.get("commandLineArg").matcher(curr).matches()) {
 						return false;
-					}
-					precededByVal = true;
-					
-					System.out.println(curr);
-					Integer type = vars.get(vars.size()-1).get(curr);
-					if (type == null) {
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid var in bool expr.");
-						return false;
-					}
-					else if (type == 0) {    // If type is int
-						currIsInt = true;
-						soFar += " " + curr;
-					}
-					else {    // If type is bool, check to be sure it's not encroaching on int expr
-						if (currIsInt) {
+						//TODO: Fix this, args not working because it is null
+						//if (args.length <= Integer.valueOf(curr.charAt(4))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+						/*
+						System.out.println(curr.charAt(4));
+						System.out.println(Integer.parseInt("" + curr.charAt(4)));
+						if (args.length <= Integer.parseInt(curr.charAt(4) + "")) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
+							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
+							return false;
+						}
+						if (precededByVal) {
+							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
+							return false;
+						}
+						if (patterns.get("bool").matcher(args[Integer.valueOf(curr.charAt(5))]).matches() && currIsInt) {
 							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
 							return false;
+						}
+						else if (patterns.get("number").matcher(args[Integer.valueOf(curr.charAt(5))]).matches()) {
+							currIsInt = true;
+							soFar += " " + curr;
+						}
+						else {
+							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid command line argument format");
+							return false;
+						}
+						precededByVal = true;
+						*/
+					}
+					else {
+						// CHECKING VAL OP VAL ORDERING
+						if (precededByVal) {
+							System.out.println("Line: " + lineNum + ": " + "NOT BOOLEAN EXPR: Val op val ordering not preserved in bool expr.");
+							return false;
+						}
+						precededByVal = true;
+						
+						Integer type = null;
+						for (HashMap<String, Integer> x : vars){
+							if (x.get(curr) != null) type = x.get(curr);
+						}
+						if (type == null) {
+							System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Invalid var in bool expr.");
+							return false;
+						}
+						else if (type == 0) {    // If type is int
+							currIsInt = true;
+							soFar += " " + curr;
+						}
+						else {    // If type is bool, check to be sure it's not encroaching on int expr
+							if (currIsInt) {
+								System.out.println("Line: " + lineNum + ": " + "NOT BOOLEAN EXPR: Bool used in integer expr segment of bool expr.");
+								return false;
+							}
 						}
 					}
 				}
@@ -780,6 +821,7 @@ public class Parser {
 				
 		}
 		if (!(openPar == closedPar)) {
+			System.out.println(openPar + ", " +  closedPar);
 			System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Boolean expr parentheses mismatch");
 			return false;
 		}
