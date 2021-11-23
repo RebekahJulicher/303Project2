@@ -312,12 +312,12 @@ public class Parser {
 		if (!isBoolExpr(line) && checkIntExpr(line)) {
 			String replacedArg = line.replaceAll("args", "Integer.valueOf(args");
 			String replacedEndArg = replacedArg.replaceAll("]", "])");
-			return "int "  + replacedEndArg + ";";
+			return replacedEndArg + ";";
 		} else if (checkBoolExpr(line)) {
 			String replacedNot = line.replaceAll("not", "!");
 			String replacedAnd = replacedNot.replaceAll("and", "&&");
 			String replacedOr = replacedAnd.replaceAll("or", "||");
-			return "boolean " + replacedOr + ";";
+			return replacedOr + ";";
 		} else {
 			System.out.println("SYNTAX ERROR: Invalid variable assignment");
 			System.exit(1);
@@ -338,7 +338,8 @@ public class Parser {
 		String arg = line.substring(index);
 		if (!checkBoolExpr(arg))
 			System.exit(1);
-		String replacedAnd = arg.replaceAll("and", "&&");
+		String replacedNot = arg.replaceAll("not", "!");
+		String replacedAnd = replacedNot.replaceAll("and", "&&");
 		String replacedOr = replacedAnd.replaceAll("or", "||");
 		return "if (" + replacedOr + ")";
 	}
@@ -353,7 +354,8 @@ public class Parser {
 		String arg = line.substring(index);
 		if (!checkBoolExpr(arg))
 			System.exit(1);
-		String replacedAnd = arg.replaceAll("and", "&&");
+		String replacedNot = arg.replaceAll("not", "!");
+		String replacedAnd = replacedNot.replaceAll("and", "&&");
 		String replacedOr = replacedAnd.replaceAll("or", "||");
 		return "else if (" + replacedOr + ")";
 	}
@@ -364,7 +366,8 @@ public class Parser {
 		String arg = line.substring(index);
 		if (!checkBoolExpr(arg))
 			System.exit(1);
-		String replacedAnd = arg.replaceAll("and", "&&");
+		String replacedNot = arg.replaceAll("not", "!");
+		String replacedAnd = replacedNot.replaceAll("and", "&&");
 		String replacedOr = replacedAnd.replaceAll("or", "||");
 		return "while (" + replacedOr + ")";
 	}
@@ -589,7 +592,7 @@ public class Parser {
 		
 		// Checking if we're defining var in terms of another var
 		for (HashMap<String, Integer> x : vars){
-			if (x.get(strArray[1]) != null){
+			if (x.get(strArray[0]) != null){
 				// THIS IS ASSUMING WE WANT TO DO COPIES INSTEAD OF POINTERS FOR THIS
 				Integer newVal = x.get(strArray[2]);
 				if (!type.equals(newVal)){
@@ -687,6 +690,7 @@ public class Parser {
 				}
 				// Else if curr string can only otherwise be a variable name
 				else {
+					System.out.println(strArray[i]);
 					if (patterns.get("number").matcher(strArray[i]).matches()) {
 						if (precededByVal) {
 							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
