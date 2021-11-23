@@ -1,0 +1,26 @@
+make x = args[0]
+make flag = false
+
+if x > 1
+start
+	make i = 2
+	while (not flag) and (x % i == 0)
+	start
+		if x % i == 0
+		start
+			flag = true
+		end
+		i = i + 1
+	end
+end
+	
+	
+if flag
+start
+	printl "not prime"
+end
+
+else
+start
+	printl "prime"
+end
