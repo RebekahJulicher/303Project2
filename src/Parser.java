@@ -105,6 +105,8 @@ public class Parser {
 	
 	private static boolean isVarSet(String expr) {
 		String words[] = expr.split(" ");
+		if (words.length < 2)
+			return false;
 		if (words[1].equals("="))
 			return true;
 		return false;
@@ -119,6 +121,8 @@ public class Parser {
 
 	private static boolean isElseIf(String expr) {
 		String words[] = expr.split(" ");
+		if (words.length < 2)
+			return false;
 		if ((words[0] + words[1]).equals("elseif"))
 			return true;
 		return false;
@@ -162,7 +166,6 @@ public class Parser {
 	private static boolean isStart(String expr) {
 		String words[] = expr.split(" ");
 		if (words[0].equals("start")) {
-			indentationLevel++;
 			return true;
 		}
 		return false;
@@ -171,7 +174,6 @@ public class Parser {
 	private static boolean isEnd(String expr) {
 		String words[] = expr.split(" ");
 		if (words[0].equals("end")) {
-			indentationLevel--;
 			return true;
 		}
 		return false;
@@ -267,11 +269,13 @@ public class Parser {
 		else if (patternName.equals("printl"))
 			writer.write(translatedPrintL(line));
 		else if (patternName.equals("start")) {
-			writer.write(translatedStart(line));
 			indentationLevel++;
+			writer.write(translatedStart(line));
 		}
-		else if (patternName.equals("end"))
+		else if (patternName.equals("end")) {
+			indentationLevel--;
 			writer.write(translatedEnd(line));
+		}
 
 		writer.write("\n");
 		System.out.println("Line translated");
@@ -307,7 +311,9 @@ public class Parser {
 	}
 
 	private static String translatedSet(String line) {
+		System.out.println("pre" + line);
 		setVar(line);
+		System.out.println("post" + line);
 		
 		if (!isBoolExpr(line) && checkIntExpr(line)) {
 			String replacedArg = line.replaceAll("args", "Integer.valueOf(args");
@@ -572,7 +578,7 @@ public class Parser {
 		String[] strArray = line.split(" ");
 		Integer type = vars.get(vars.size()-1).get(strArray[0]);
 		String content = "";
-		for (int i = 2; i < strArray.length; i++) content += strArray[i];
+		for (int i = 2; i < strArray.length; i++) content += strArray[i] + " ";
 		
 		if (type == null){
 			System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Var " + strArray[0] + " has not been " +
@@ -616,9 +622,11 @@ public class Parser {
 		int numClosedPar = 0;
 		boolean precededByVal = false;
 		String soFar = "";
+		System.out.println(line);
 		// Checking for equal parentheses and removing them from the issue
 		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);
+			System.out.println(c);
 			if (c == '(') {
 				if (i < line.length()-1 && isOp(line.charAt(i+1))){
 					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
@@ -645,6 +653,7 @@ public class Parser {
 		}
 		
 		// Handling value/operator pairing checking
+		System.out.println(soFar);
 		String[] strArray = soFar.split(" ");
 		for (int i = 0; i < strArray.length; i++) {
 			//System.out.println(soFar);
@@ -713,7 +722,7 @@ public class Parser {
 	}
 
 	private static boolean checkBoolExpr(String expr) {
-		String[] parts = expr.split("\\s+");
+		String[] parts = expr.split(" ");
 		
 		//System.out.println(parts[0]);
 

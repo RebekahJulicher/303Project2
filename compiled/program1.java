@@ -9,7 +9,7 @@ public class program1 {
 			if ((i % x == 0) || (i % y == 0))
 			{
 				System.out.println(i);
+				}
 			}
-		}
 	}
 }
