@@ -98,7 +98,9 @@ public class Parser {
 	
 	private static boolean isAssignment(String expr) {
 		String words[] = expr.split(" ");
-		if (words[0].equals("make"))
+		if (words.length < 4)
+			return false;
+		if (words[0].equals("make") && words[2].equals("="))
 			return true;
 		return false;
 	}
