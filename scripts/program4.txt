@@ -1,0 +1,10 @@
+# Orlando Rodriguez
+# Rebekah Julicher
+
+# This program demonstrates a parsing error brought about when trying to 
+# set a variable equal to something that is not a value
+
+make x = 1
+
+# Error should be thrown on line 10
+x = print "this shouldn't work"

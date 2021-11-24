@@ -1,0 +1,5 @@
+# Orlando Rodriguez
+# Rebekah Julicher
+
+# This program demonstrates an error that comes up when you set a variable before defining it
+x = 5 # should throw error on 5

@@ -3,15 +3,17 @@
 # Want to declare some variables
 make x = args[0]
 make y = args[1]
-make m = args[2]
+make m = args[2] + 1
 
+make count = 0
 for i across 1 : m 
 start
 	if (i % x == 0) or (i % y == 0)
 	start
-		printl i
+		count = count + 1
 	end
 end
+printl count
 
 
 
