@@ -339,6 +339,7 @@ public class Parser {
 	}
 	
 	private static String translatedIf(String line) {
+		vars.add(new HashMap<String,Integer>());
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
@@ -351,10 +352,12 @@ public class Parser {
 	}
 
 	private static String translatedElse(String line) {
+		vars.add(new HashMap<String,Integer>());
 		return "else ";
 	}
 
 	private static String translatedElseIf(String line) {
+		vars.add(new HashMap<String,Integer>());
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
@@ -367,6 +370,7 @@ public class Parser {
 	}
 
 	private static String translatedWhile(String line) {
+		vars.add(new HashMap<String,Integer>());
 		String[] words = line.split(" ");
 		int index = line.indexOf(words[1]);
 		String arg = line.substring(index);
@@ -414,8 +418,6 @@ public class Parser {
 		try { Integer.parseInt(end); }
 		catch(NumberFormatException e) {
 			boolean found = false;
-			//for (HashMap<String, Integer> x : vars) System.out.println(x.toString());
-			//System.out.println(end);
 			
 			Integer endVar;
 			for (HashMap<String, Integer> x : vars){
@@ -476,6 +478,7 @@ public class Parser {
 	}
 	
 	private static String translatedEnd(String line) {
+		vars.remove(vars.size()-1);
 		return "}";
 	}
 
@@ -675,20 +678,11 @@ public class Parser {
 				}
 				// If curr string is command line argument
 				else if (patterns.get("commandLineArg").matcher(strArray[i]).matches()) {
-					return true;
-					/*
-					if (args.length <= Integer.valueOf(strArray[i].charAt(5))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
+					if (precededByVal) {
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
 						return false;
 					}
-					if (patterns.get("number").matcher(args[Integer.valueOf(strArray[i].charAt(5))]).matches()) {
-						if (precededByVal) {
-							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
-							return false;
-						}
-						precededByVal = true;
-					}
-					*/
+					precededByVal = true;
 				}
 				else if (strArray[i].equals("=")) {
 					if (!precededByVal) {
@@ -724,8 +718,6 @@ public class Parser {
 	private static boolean checkBoolExpr(String expr) {
 		String[] parts = expr.split(" ");
 		
-		//System.out.println(parts[0]);
-
 		String[] boolOpsArray = {"and", "or", "not"};
 		List<String> boolOps = Arrays.asList(boolOpsArray);
 		String[] compOpsArray = {"<", ">", "==", "<=", ">=", "!=", "<>"};
@@ -827,34 +819,8 @@ public class Parser {
 					}
 					// If curr string is command line argument
 					else if (patterns.get("commandLineArg").matcher(curr).matches()) {
+						System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Command line arg in bool expr - these can only be ints");
 						return false;
-						//TODO: Fix this, args not working because it is null
-						//if (args.length <= Integer.valueOf(curr.charAt(4))) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-						/*
-						System.out.println(curr.charAt(4));
-						System.out.println(Integer.parseInt("" + curr.charAt(4)));
-						if (args.length <= Integer.parseInt(curr.charAt(4) + "")) { // MAY NEED TO BE 4 IF WE REMOVE $ FROM ARG
-							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid arg index");
-							return false;
-						}
-						if (precededByVal) {
-							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
-							return false;
-						}
-						if (patterns.get("bool").matcher(args[Integer.valueOf(curr.charAt(5))]).matches() && currIsInt) {
-							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Bool used in integer expr segment of bool expr.");
-							return false;
-						}
-						else if (patterns.get("number").matcher(args[Integer.valueOf(curr.charAt(5))]).matches()) {
-							currIsInt = true;
-							soFar += " " + curr;
-						}
-						else {
-							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Invalid command line argument format");
-							return false;
-						}
-						precededByVal = true;
-						*/
 					}
 					else if (curr.equals("=")) {
 						if (!precededByVal) {
