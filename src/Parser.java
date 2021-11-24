@@ -497,7 +497,13 @@ public class Parser {
 	}
 	
 	private static boolean handleExpr(boolean isDefinition, boolean isBool, String content, String name) {
-		Integer type = vars.get(vars.size()-1).get(name);
+		//Integer type = vars.get(vars.size()-1).get(name);
+		Integer type = null;
+		for (HashMap<String, Integer> x : vars){
+			if (x.get(name) != null){
+				type = x.get(name);
+			}
+		}
 		
 		if (isDefinition && isBool) {
 			if (!checkBoolExpr(content)) System.exit(1);
@@ -581,7 +587,12 @@ public class Parser {
 
 	private static boolean setVar(String line){
 		String[] strArray = line.split(" ");
-		Integer type = vars.get(vars.size()-1).get(strArray[0]);
+		Integer type = null;
+		for (HashMap<String, Integer> x : vars){
+			if (x.get(strArray[0]) != null){
+				type = x.get(strArray[0]);
+			}
+		}
 		String content = "";
 		for (int i = 2; i < strArray.length; i++) content += strArray[i] + " ";
 		
@@ -615,7 +626,7 @@ public class Parser {
 				//return strArray[1] + " = " + strArray[3] + ";";
 			}
 		}
-		System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Variable assignment to nonexistent variable");
+		System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR in setVar: Variable assignment to nonexistent variable");
 		System.exit(1);
 		return true;
 		//return "\\";
