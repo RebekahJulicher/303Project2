@@ -32,7 +32,7 @@ public class Parser {
 				System.out.println("File created: " + javaFile.getName());
 			else
 				System.out.println("File already exists");
-			System.out.println(javaFile.getName());
+			System.out.println("Compiling " + javaFile.getName());
 			writer = new FileWriter(javaFile);
 		} catch (IOException e) {
 			System.out.println("Error making file");
@@ -81,7 +81,7 @@ public class Parser {
 			System.out.println("File " + args[0] + " could not be found!");
 			e.printStackTrace();
 		}
-		System.out.println("FINISHED");
+		System.out.println("COMPILATION COMPLETED. 0 ERRORS");
 	}
 	
 	
@@ -248,8 +248,8 @@ public class Parser {
 		for (int i = 0; i < indentationLevel; i++)
 			initialTab += "\t";
 		writer.write(initialTab);
-		System.out.println("Translating line: " + line);
-		System.out.println("This line is a: " + patternName);
+		System.out.println("Translating line: " + lineNum + "...");
+		//System.out.println("This line is a: " + patternName);
 		if (patternName.equals("assign")) 
 			writer.write(translatedAssign(line));
 		if (patternName.equals("set")) 
@@ -278,7 +278,7 @@ public class Parser {
 		}
 
 		writer.write("\n");
-		System.out.println("Line translated");
+		System.out.println("\t\tSUCCESSFUL");
 		writer.flush();
 			
 	}
@@ -311,9 +311,9 @@ public class Parser {
 	}
 
 	private static String translatedSet(String line) {
-		System.out.println("pre" + line);
+		//System.out.println("pre" + line);
 		setVar(line);
-		System.out.println("post" + line);
+		//System.out.println("post" + line);
 		
 		if (!isBoolExpr(line) && checkIntExpr(line)) {
 			String replacedArg = line.replaceAll("args", "Integer.valueOf(args");
@@ -625,11 +625,11 @@ public class Parser {
 		int numClosedPar = 0;
 		boolean precededByVal = false;
 		String soFar = "";
-		System.out.println(line);
+		//System.out.println(line);
 		// Checking for equal parentheses and removing them from the issue
 		for (int i = 0; i < line.length(); i++) {
 			char c = line.charAt(i);
-			System.out.println(c);
+			//System.out.println(c);
 			if (c == '(') {
 				if (i < line.length()-1 && isOp(line.charAt(i+1))){
 					System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Operator directly after parenthesis");
@@ -656,7 +656,7 @@ public class Parser {
 		}
 		
 		// Handling value/operator pairing checking
-		System.out.println(soFar);
+		//System.out.println(soFar);
 		String[] strArray = soFar.split(" ");
 		for (int i = 0; i < strArray.length; i++) {
 			//System.out.println(soFar);
@@ -693,7 +693,7 @@ public class Parser {
 				}
 				// Else if curr string can only otherwise be a variable name
 				else {
-					System.out.println(strArray[i]);
+					//System.out.println(strArray[i]);
 					if (patterns.get("number").matcher(strArray[i]).matches()) {
 						if (precededByVal) {
 							System.out.println("Line: " + lineNum + ": " + "SYNTAX ERROR: Value not preceded by operator");
@@ -776,7 +776,7 @@ public class Parser {
 					if (curr.equals("not"))
 						return true;
 					if (!precededByVal) {
-						System.out.println(curr);
+						//System.out.println(curr);
 						System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Val op val ordering not preserved at boolOp");
 						return false;
 					}
@@ -842,7 +842,7 @@ public class Parser {
 							if (x.get(curr) != null) type = x.get(curr);
 						}
 						if (type == null) {
-							System.out.println(curr);
+							//System.out.println(curr);
 							System.out.println("Line " + lineNum + ": " + "NOT BOOLEAN EXPR: Invalid var in bool expr.");
 							return false;
 						}

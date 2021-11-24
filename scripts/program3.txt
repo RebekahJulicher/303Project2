@@ -1,0 +1,10 @@
+# Orlando Rodriguez
+# Rebekah Julicher
+
+# This program illustrates a parsing error brought about by trying to add a boolean to an int
+
+make bool = false
+make integer = 1
+
+# Should throw an error on line 10
+make answer = bool + integer
